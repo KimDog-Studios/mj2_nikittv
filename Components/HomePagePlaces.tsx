@@ -11,20 +11,26 @@ const places = [
   {
     name: 'Bridgend',
     area: 'Wales',
-    price: '£?? | Per Show',
+    price: '£20 | Per Show',
     image: 'https://cdn.britannica.com/29/144829-050-35D6B000/Bridgend-Wales.jpg',
   },
   {
     name: 'Pontycymer',
     area: 'Wales',
-    price: '£?? | Per Show',
+    price: '£10 | Per Show',
     image: 'https://alchetron.com/cdn/pontycymer-f52ca3b6-835b-43b7-95b7-26d697b9633-resize-750.jpeg',
   },
   {
     name: 'Sarn',
     area: 'Wales',
-    price: '£?? | Per Show',
-    image: 'https://a0.muscache.com/im/pictures/INTERNAL/INTERNAL-Cardiff/original/c6c46195-54f2-49c1-ad61-13d7fb26514c.jpeg',
+    price: '£15 | Per Show',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/St_Ffraid%27s_Church%2C_Sarn_-_geograph.org.uk_-_4985105.jpg/960px-St_Ffraid%27s_Church%2C_Sarn_-_geograph.org.uk_-_4985105.jpg',
+  },
+  {
+    name: 'Maesteg',
+    area: 'Wales',
+    price: '£20 | Per Show',
+    image: 'https://i2-prod.walesonline.co.uk/incoming/article21622288.ece/ALTERNATES/s298/0_rbp_mai100821maesteg_10825JPG.jpg',
   },
 ];
 
