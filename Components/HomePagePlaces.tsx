@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import Grid from '@mui/material/Grid';
+// Removed MUI Grid import
 import Card from '@mui/material/Card';
 import CardMedia from '@mui/material/CardMedia';
 import CardContent from '@mui/material/CardContent';
@@ -92,45 +92,54 @@ function HomePagePlaces() {
           }
         `}</style>
       </Box>
-      <Grid container spacing={3} justifyContent="center" alignItems="center" sx={{ maxWidth: 900 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' },
+          gap: 3,
+          justifyContent: 'center',
+          alignItems: 'center',
+          maxWidth: 900,
+          mx: 'auto',
+          width: '100%',
+        }}
+      >
         {places.map((place, idx) => (
-          <Grid item xs={12} sm={6} md={3} key={idx}>
-            <Card sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
-              overflow: 'hidden',
-              bgcolor: '#232526',
-              color: '#fff',
-              minWidth: 220,
-              maxWidth: 240,
-              mx: 'auto',
-              transition: 'transform 0.18s',
-              '&:hover': {
-                transform: 'scale(1.04)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.65)',
-              },
-            }}>
-              <Box sx={{ width: '100%', height: 120, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#222' }}>
-                <img
-                  src={place.image}
-                  alt={place.name}
-                  style={{ width: '100%', height: '120px', objectFit: 'cover', filter: 'brightness(0.92) contrast(1.08)', border: 0 }}
-                />
-              </Box>
-              {/* Area below image, outside image container */}
-              <Box sx={{ px: 2, py: 1, bgcolor: '#232526', textAlign: 'center', borderBottom: '1px solid #222' }}>
-                <Typography variant="caption" sx={{ color: '#38ef7d', fontWeight: 700, fontSize: '1em', letterSpacing: 1 }}>
-                  {place.area}
-                </Typography>
-              </Box>
-              <CardContent sx={{ px: 2, py: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, fontSize: '1.08em', color: '#fff' }}>{place.name}</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#38ef7d', fontSize: '1em' }}>{place.price}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+          <Card key={idx} sx={{
+            borderRadius: 3,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
+            overflow: 'hidden',
+            bgcolor: '#232526',
+            color: '#fff',
+            minWidth: 220,
+            maxWidth: 240,
+            mx: 'auto',
+            transition: 'transform 0.18s',
+            '&:hover': {
+              transform: 'scale(1.04)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.65)',
+            },
+          }}>
+            <Box sx={{ width: '100%', height: 120, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#222' }}>
+              <img
+                src={place.image}
+                alt={place.name}
+                style={{ width: '100%', height: '120px', objectFit: 'cover', filter: 'brightness(0.92) contrast(1.08)', border: 0 }}
+              />
+            </Box>
+            {/* Area below image, outside image container */}
+            <Box sx={{ px: 2, py: 1, bgcolor: '#232526', textAlign: 'center', borderBottom: '1px solid #222' }}>
+              <Typography variant="caption" sx={{ color: '#38ef7d', fontWeight: 700, fontSize: '1em', letterSpacing: 1 }}>
+                {place.area}
+              </Typography>
+            </Box>
+            <CardContent sx={{ px: 2, py: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, fontSize: '1.08em', color: '#fff' }}>{place.name}</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#38ef7d', fontSize: '1em' }}>{place.price}</Typography>
+            </CardContent>
+          </Card>
         ))}
-      </Grid>
+      </Box>
     </Box>
   );
 }
