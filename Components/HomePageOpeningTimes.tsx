@@ -146,7 +146,7 @@ function getOpenStatus(today: OpeningTime, now: Date): OpenStatus {
               {ot.day}
             </Typography>
             {ot.open === 'Closed' ? (
-              <Typography variant="body1" sx={{ color: '#bbb', fontWeight: 700 }}>Closed</Typography>
+              <Typography variant="body1" sx={{ color: '#bbb', fontWeight: 700 }}>CLOSED</Typography>
             ) : (
               <Typography variant="body1" sx={{ color: '#38ef7d', fontWeight: 700 }}>{ot.open} - {ot.close}</Typography>
             )}
