@@ -115,7 +115,7 @@ function HomePagePlaces() {
             borderRadius: 3,
             boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
             overflow: 'hidden',
-            bgcolor: '#232526',
+            bgcolor: '#181A1B',
             color: '#fff',
             minWidth: 220,
             maxWidth: 240,
