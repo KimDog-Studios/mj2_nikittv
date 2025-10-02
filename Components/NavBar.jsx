@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -11,17 +11,23 @@ import SearchIcon from '@mui/icons-material/Search';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
-  borderRadius: 24,
-  background: alpha('#fff', 0.12),
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-  '&:hover': {
-    background: alpha('#fff', 0.22),
-  },
+  borderRadius: 32,
+  background: 'rgba(255,255,255,0.10)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+  border: '2px solid rgba(255,255,255,0.18)',
+  backdropFilter: 'blur(8px)',
   marginLeft: theme.spacing(2),
-  width: '240px',
-  transition: 'background 0.3s',
+  minWidth: '260px',
+  maxWidth: '340px',
+  transition: 'all 0.3s cubic-bezier(.25,.8,.25,1)',
   display: 'flex',
   alignItems: 'center',
+  '&:focus-within': {
+    background: 'rgba(255,255,255,0.18)',
+    boxShadow: '0 12px 36px rgba(0,0,0,0.22)',
+    borderColor: '#38ef7d',
+    minWidth: '340px',
+  },
 }));
 
 const SearchIconWrapper = styled('div')(({ theme }) => ({
@@ -37,18 +43,64 @@ const SearchIconWrapper = styled('div')(({ theme }) => ({
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
   color: '#fff',
-  fontSize: '1rem',
+  fontSize: '1.15rem',
   fontFamily: 'inherit',
   width: '100%',
   paddingLeft: theme.spacing(5),
-  borderRadius: 24,
+  borderRadius: 32,
+  fontWeight: 500,
+  letterSpacing: 1,
+  background: 'transparent',
   '.MuiInputBase-input': {
-    padding: theme.spacing(1.2, 1, 1.2, 0),
+    padding: theme.spacing(1.5, 1, 1.5, 0),
+    background: 'transparent',
+    border: 'none',
+    outline: 'none',
+    boxShadow: 'none',
+  },
+  '& input::placeholder': {
+    color: '#e0e0e0',
+    opacity: 1,
+    fontWeight: 400,
+    letterSpacing: 1,
   },
 }));
 
 function NavBar() {
   const searchRef = useRef(null);
+  const [typedText, setTypedText] = useState('');
+  const fullText = 'MJ2 Studios';
+
+  useEffect(() => {
+    let i = 0;
+    let direction = 1; // 1: typing, -1: deleting
+    let timeoutId;
+    setTypedText('');
+
+    const typeLoop = () => {
+      if (direction === 1) {
+        if (i < fullText.length) {
+          i++;
+          setTypedText(fullText.slice(0, i));
+          timeoutId = setTimeout(typeLoop, 400);
+        } else {
+          direction = -1;
+          timeoutId = setTimeout(typeLoop, 1200);
+        }
+      } else {
+        if (i > 0) {
+          i--;
+          setTypedText(fullText.slice(0, i));
+          timeoutId = setTimeout(typeLoop, 400);
+        } else {
+          direction = 1;
+          timeoutId = setTimeout(typeLoop, 800);
+        }
+      }
+    };
+    typeLoop();
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -87,9 +139,47 @@ function NavBar() {
           <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
             <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Logo.jpg" alt="Logo" style={{ height: 54, marginRight: 20, borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} />
           </a>
-          <Typography variant="h4" component="div" sx={{ fontWeight: 800, letterSpacing: 3, color: '#fff', fontFamily: 'Geist, sans-serif', textShadow: '0 4px 16px rgba(0,0,0,0.18)', mx: 1 }}>
-            MJ2 Studios
+          <Typography
+            variant="h5"
+            component="div"
+            sx={{
+              fontWeight: 800,
+              letterSpacing: 2,
+              color: '#fff',
+              fontFamily: 'Geist, sans-serif',
+              textShadow: '0 4px 16px rgba(0,0,0,0.18)',
+              mx: 1,
+              minWidth: '170px',
+              width: '170px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span style={{ display: 'inline-block', textAlign: 'left', fontSize: '1.1em' }}>
+              {typedText}
+              <span style={{
+                display: 'inline-block',
+                width: '1ch',
+                background: 'none',
+                color: '#38ef7d',
+                fontWeight: 900,
+                fontSize: '1em',
+                marginLeft: '2px',
+                animation: 'blink 1s steps(1) infinite',
+                position: 'relative',
+                left: 0,
+              }}>|</span>
+            </span>
           </Typography>
+          <style>{`
+            @keyframes blink {
+              0%, 50% { opacity: 1; }
+              51%, 100% { opacity: 0; }
+            }
+          `}</style>
           <Button variant="contained" sx={{
             background: 'linear-gradient(90deg, #ff512f 0%, #dd2476 100%)',
             color: '#fff',
@@ -163,7 +253,7 @@ function NavBar() {
                 transform: 'scale(1.06)',
               },
             }}>Manage Bookings</Button>
-          <Search sx={{ boxShadow: '0 4px 16px rgba(0,0,0,0.10)', border: '1.5px solid #444' }}>
+          <Search>
             <SearchIconWrapper>
               <SearchIcon />
             </SearchIconWrapper>
@@ -171,11 +261,8 @@ function NavBar() {
               placeholder="Search tributes…"
               inputProps={{ 'aria-label': 'search' }}
               inputRef={searchRef}
-              sx={{ fontWeight: 500, fontSize: '1.05rem', letterSpacing: 1, px: 1 }}
             />
-            <Box sx={{ ml: 1, color: '#bbb', fontSize: '0.95rem', fontFamily: 'monospace', background: 'rgba(255,255,255,0.10)', px: 1.5, py: 0.7, borderRadius: 2, border: '1px solid #444', display: 'flex', alignItems: 'center', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
-              F
-            </Box>
+            <Box sx={{ ml: 1, color: '#bbb', fontSize: '1rem', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', px: 1.7, py: 0.8, borderRadius: 2.5, border: '1.5px solid #444', display: 'flex', alignItems: 'center', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.10)', letterSpacing: 1 }}>F</Box>
           </Search>
         </Box>
       </Toolbar>
