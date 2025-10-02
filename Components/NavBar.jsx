@@ -234,25 +234,31 @@ function NavBar() {
               transform: 'scale(1.06)',
             },
           }}>Contact</Button>
-            <Button variant="contained" sx={{
-              background: 'linear-gradient(90deg, #f7971e 0%, #ffd200 100%)',
-              color: '#232526',
-              fontWeight: 700,
-              borderRadius: 22,
-              boxShadow: '0 4px 16px rgba(247,151,30,0.18)',
-              px: 3.5,
-              py: 1.2,
-              textTransform: 'none',
-              minWidth: 150,
-              fontSize: '1.08rem',
-              letterSpacing: 1,
-              transition: 'transform 0.18s',
-              '&:hover': {
-                background: 'linear-gradient(90deg, #ffd200 0%, #f7971e 100%)',
+            <Button
+              variant="contained"
+              sx={{
+                background: 'linear-gradient(90deg, #f7971e 0%, #ffd200 100%)',
                 color: '#232526',
-                transform: 'scale(1.06)',
-              },
-            }}>Manage Bookings</Button>
+                fontWeight: 700,
+                borderRadius: 22,
+                boxShadow: '0 4px 16px rgba(247,151,30,0.18)',
+                px: 3.5,
+                py: 1.2,
+                textTransform: 'none',
+                minWidth: 150,
+                fontSize: '1.08rem',
+                letterSpacing: 1,
+                transition: 'transform 0.18s',
+                '&:hover': {
+                  background: 'linear-gradient(90deg, #ffd200 0%, #f7971e 100%)',
+                  color: '#232526',
+                  transform: 'scale(1.06)',
+                },
+              }}
+              onClick={() => window.location.href = '/manage_booking'}
+            >
+              Manage Bookings
+            </Button>
           <Search>
             <SearchIconWrapper>
               <SearchIcon />
