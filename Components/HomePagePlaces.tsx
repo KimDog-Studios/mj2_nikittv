@@ -57,7 +57,7 @@ function HomePagePlaces() {
             transition: 'color 0.3s',
           }}
         >
-          Areas We Cover
+          Areas We Cover 
         </Typography>
         <Box sx={{
           width: '220px',
