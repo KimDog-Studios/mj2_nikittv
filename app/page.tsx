@@ -8,8 +8,8 @@ export default function Home() {
   return (
     <div style={{ background: '#181A1B', minHeight: '100vh', width: '100vw' }}>
       <NavBar/>
-      <HomePagePlaces/>
       <HomePageOpeningTimes/>
+      <HomePagePlaces/>
     </div>
   );
 }
