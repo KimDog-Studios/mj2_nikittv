@@ -108,14 +108,14 @@ function getOpenStatus(today: OpeningTime, now: Date): OpenStatus {
               <span>{currentTime.hours}</span>
               <span style={{
                 display: 'inline-block',
-                animation: 'blinkColon 1s steps(1) infinite',
+                animation: 'blinkColon 0.85s steps(1) infinite',
                 fontWeight: 900,
                 minWidth: '0.7em',
               }}>:</span>
               <span>{currentTime.minutes}</span>
               <span style={{
                 display: 'inline-block',
-                animation: 'blinkColon 1s steps(1) infinite',
+                animation: 'blinkColon 0.85s steps(1) infinite',
                 fontWeight: 900,
                 minWidth: '0.7em',
               }}>:</span>
