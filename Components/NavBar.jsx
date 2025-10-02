@@ -180,60 +180,72 @@ function NavBar() {
               51%, 100% { opacity: 0; }
             }
           `}</style>
-          <Button variant="contained" sx={{
-            background: 'linear-gradient(90deg, #ff512f 0%, #dd2476 100%)',
-            color: '#fff',
-            fontWeight: 700,
-            borderRadius: 22,
-            boxShadow: '0 4px 16px rgba(221,36,118,0.18)',
-            px: 3.5,
-            py: 1.2,
-            textTransform: 'none',
-            minWidth: 110,
-            fontSize: '1.08rem',
-            letterSpacing: 1,
-            transition: 'transform 0.18s',
-            '&:hover': {
-              background: 'linear-gradient(90deg, #dd2476 0%, #ff512f 100%)',
-              transform: 'scale(1.06)',
-            },
-          }}>Home</Button>
-          <Button variant="contained" sx={{
-            background: 'linear-gradient(90deg, #1e3c72 0%, #2a5298 100%)',
-            color: '#fff',
-            fontWeight: 700,
-            borderRadius: 22,
-            boxShadow: '0 4px 16px rgba(30,60,114,0.18)',
-            px: 3.5,
-            py: 1.2,
-            textTransform: 'none',
-            minWidth: 110,
-            fontSize: '1.08rem',
-            letterSpacing: 1,
-            transition: 'transform 0.18s',
-            '&:hover': {
-              background: 'linear-gradient(90deg, #2a5298 0%, #1e3c72 100%)',
-              transform: 'scale(1.06)',
-            },
-          }}>About</Button>
-          <Button variant="contained" sx={{
-            background: 'linear-gradient(90deg, #11998e 0%, #38ef7d 100%)',
-            color: '#fff',
-            fontWeight: 700,
-            borderRadius: 22,
-            boxShadow: '0 4px 16px rgba(17,153,142,0.18)',
-            px: 3.5,
-            py: 1.2,
-            textTransform: 'none',
-            minWidth: 110,
-            fontSize: '1.08rem',
-            letterSpacing: 1,
-            transition: 'transform 0.18s',
-            '&:hover': {
-              background: 'linear-gradient(90deg, #38ef7d 0%, #11998e 100%)',
-              transform: 'scale(1.06)',
-            },
-          }}>Contact</Button>
+          <Button
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(90deg, #ff512f 0%, #dd2476 100%)',
+              color: '#fff',
+              fontWeight: 700,
+              borderRadius: 22,
+              boxShadow: '0 4px 16px rgba(221,36,118,0.18)',
+              px: 3.5,
+              py: 1.2,
+              textTransform: 'none',
+              minWidth: 110,
+              fontSize: '1.08rem',
+              letterSpacing: 1,
+              transition: 'transform 0.18s',
+              '&:hover': {
+                background: 'linear-gradient(90deg, #dd2476 0%, #ff512f 100%)',
+                transform: 'scale(1.06)',
+              },
+            }}
+            onClick={() => window.location.href = '/'}
+          >Home</Button>
+          <Button
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(90deg, #1e3c72 0%, #2a5298 100%)',
+              color: '#fff',
+              fontWeight: 700,
+              borderRadius: 22,
+              boxShadow: '0 4px 16px rgba(30,60,114,0.18)',
+              px: 3.5,
+              py: 1.2,
+              textTransform: 'none',
+              minWidth: 110,
+              fontSize: '1.08rem',
+              letterSpacing: 1,
+              transition: 'transform 0.18s',
+              '&:hover': {
+                background: 'linear-gradient(90deg, #2a5298 0%, #1e3c72 100%)',
+                transform: 'scale(1.06)',
+              },
+            }}
+            onClick={() => window.location.href = '/'}
+          >About</Button>
+          <Button
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(90deg, #11998e 0%, #38ef7d 100%)',
+              color: '#fff',
+              fontWeight: 700,
+              borderRadius: 22,
+              boxShadow: '0 4px 16px rgba(17,153,142,0.18)',
+              px: 3.5,
+              py: 1.2,
+              textTransform: 'none',
+              minWidth: 110,
+              fontSize: '1.08rem',
+              letterSpacing: 1,
+              transition: 'transform 0.18s',
+              '&:hover': {
+                background: 'linear-gradient(90deg, #38ef7d 0%, #11998e 100%)',
+                transform: 'scale(1.06)',
+              },
+            }}
+            onClick={() => window.location.href = '/'}
+          >Contact</Button>
             <Button
               variant="contained"
               sx={{
