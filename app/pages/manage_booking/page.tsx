@@ -19,7 +19,7 @@ export default function ManageBookingPage() {
         setAuthed(true);
       } else {
         setAuthed(false);
-        router.replace('/admin');
+        router.replace('/pages/admin');
       }
     });
     return () => unsub();
