@@ -39,7 +39,6 @@ export default function ManageBookingPage() {
       <ManageBookings />
       <Box sx={{ maxWidth: 1100, mx: 'auto', px: 2 }}>
         <BookingsAdmin />
-        <EmailSystem />
         <ShowsCalendar />
       </Box>
     </>

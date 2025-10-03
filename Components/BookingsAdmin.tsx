@@ -257,8 +257,10 @@ export default function BookingsAdmin() {
       }
 
       // Send status update email if email exists
+      let emailSent = false;
       if (booking.email && nextStatus !== 'pending') {
         try {
+          console.log('Sending status update email to:', booking.email);
           const subject = nextStatus === 'confirmed' ? 'Booking Confirmed - MJ2 Studios' : 'Booking Update - MJ2 Studios';
           const statusMessage = nextStatus === 'confirmed' ? 'great news! Your booking has been confirmed.' : 'we regret to inform you that your booking has been cancelled.';
           const emailBody = `
@@ -307,7 +309,7 @@ export default function BookingsAdmin() {
 </body>
 </html>
           `;
-          await fetch('/api/send-email', {
+          const response = await fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -316,12 +318,18 @@ export default function BookingsAdmin() {
               body: emailBody
             }),
           });
+          if (response.ok) {
+            emailSent = true;
+            console.log('Status update email sent successfully');
+          } else {
+            console.error('Email API returned error:', response.status);
+          }
         } catch (emailError) {
           console.error('Failed to send status update email:', emailError);
         }
       }
 
-      setSnack({ open: true, message: `Status updated to ${nextStatus}`, severity: 'success' });
+      setSnack({ open: true, message: `Status updated to ${nextStatus}${emailSent ? ' - Email sent' : ''}`, severity: 'success' });
     } catch (err: any) {
       console.error(err);
       setSnack({ open: true, message: err?.message ?? 'Update failed', severity: 'error' });

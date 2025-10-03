@@ -175,7 +175,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
         <div class="content">
             <h2>Booking Confirmation</h2>
             <p>Dear ${form.name},</p>
-            <p>Thank you for choosing MJ2 Studios for your photography or videography needs.</p>
+            <p>Thank you for choosing MJ2 Studios for your Michael Jackson Tribute needs.</p>
             <p>We have received your booking details and will review them shortly. Our team will contact you within 24-48 hours to confirm your appointment and provide any additional information required.</p>
             <p><strong>Booking Details:</strong></p>
             <ul>
