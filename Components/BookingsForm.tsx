@@ -31,7 +31,6 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'fire
 import { db, rtdb } from './firebaseClient';
 import { ref, push, set, get } from 'firebase/database';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -117,7 +116,6 @@ interface Props {
 
 function ManageBookings({ selectedLocation, onLocationChange }: Props) {
   const theme = useTheme();
-  const router = useRouter();
   const [form, setForm] = useState<FormState>({ name: '', email: '', phone: '', location: selectedLocation ?? '', venue: '', package: '', date: null, message: '', time: null, acceptTerms: false });
   const [openSnack, setOpenSnack] = useState(false);
   const [snackMsg, setSnackMsg] = useState('');
@@ -887,7 +885,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: form.email,
-            subject: 'Booking Confirmation - MJ2 Studios',
+            subject: `[${bookingId}] Booking Confirmation - MJ2 Studios`,
             body: emailBody
           }),
         });
@@ -900,7 +898,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
       localStorage.removeItem('mj2_booking_form');
 
       setSubmissionError(null);
-      router.push('/pages/booking_status?bookingId=' + bookingId);
+      window.location.href = '/pages/booking_status?bookingId=' + bookingId;
     } catch (err: any) {
       console.error('Booking submission error:', err);
       const message = err?.message ? `Submission failed: ${err.message}` : 'Submission failed — check console for details.';

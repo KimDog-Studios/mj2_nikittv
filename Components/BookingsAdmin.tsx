@@ -27,11 +27,14 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import PendingIcon from '@mui/icons-material/Pending';
+import SendIcon from '@mui/icons-material/Send';
 // Removed email-related icons
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -51,11 +54,12 @@ import { db, rtdb } from './firebaseClient';
 // Firestore
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 // Realtime DB
-import { ref as rref, onValue, update as rtdbUpdate, remove as rtdbRemove } from 'firebase/database';
+import { ref as rref, onValue, update as rtdbUpdate, remove as rtdbRemove, push, set } from 'firebase/database';
 // Removed Resend email service import
 
 type Booking = {
   id: string;
+  bookingId?: string;
   name?: string;
   email?: string;
   phone?: string;
@@ -76,6 +80,13 @@ type Show = {
   end?: Date;
   venue?: string;
   description?: string;
+};
+
+type Message = {
+  id: string;
+  sender: 'user' | 'admin';
+  message: string;
+  timestamp: number;
 };
 
 export default function BookingsAdmin() {
@@ -103,6 +114,9 @@ export default function BookingsAdmin() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [cancellationReason, setCancellationReason] = useState('');
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [newChatMessage, setNewChatMessage] = useState('');
+  const [chatTab, setChatTab] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousLengthRef = useRef(0);
 
@@ -195,8 +209,32 @@ export default function BookingsAdmin() {
     previousLengthRef.current = bookings.length;
   }, [bookings]);
 
+  // Chat listener
+  useEffect(() => {
+    if (!viewOpen || !selectedForView || !rtdb) return;
+
+    const chatRef = rref(rtdb, `chats/${selectedForView.bookingId || selectedForView.id}/messages`);
+    const unsubscribe = onValue(chatRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const msgs = Object.entries(data).map(([id, msg]: [string, any]) => ({
+          id,
+          ...msg
+        })).sort((a, b) => a.timestamp - b.timestamp);
+        setChatMessages(msgs);
+      } else {
+        setChatMessages([]);
+      }
+    });
+
+    return unsubscribe;
+  }, [viewOpen, selectedForView, rtdb]);
+
   const handleView = (b: Booking) => {
+    console.log('Viewing booking:', b);
     setSelectedForView(b);
+    setChatMessages([]);
+    setChatTab(0);
     setViewOpen(true);
   };
 
@@ -452,6 +490,26 @@ export default function BookingsAdmin() {
       setSnack({ open: true, message: 'Bulk deleted', severity: 'success' });
     } catch (err: any) {
       setSnack({ open: true, message: err?.message ?? 'Bulk delete failed', severity: 'error' });
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!newChatMessage.trim() || !selectedForView || !rtdb) return;
+
+    const chatRef = rref(rtdb, `chats/${selectedForView.bookingId || selectedForView.id}/messages`);
+    const newMsgRef = push(chatRef);
+    await set(newMsgRef, {
+      sender: 'admin',
+      message: newChatMessage.trim(),
+      timestamp: Date.now()
+    });
+    setNewChatMessage('');
+  };
+
+  const handleChatKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
     }
   };
 
@@ -964,7 +1022,7 @@ export default function BookingsAdmin() {
         open={viewOpen}
         onClose={() => setViewOpen(false)}
         fullWidth
-        maxWidth="sm"
+        maxWidth="md"
         BackdropProps={{
           sx: { backdropFilter: 'blur(10px)', backgroundColor: 'rgba(0,0,0,0.5)' }
         }}
@@ -974,8 +1032,12 @@ export default function BookingsAdmin() {
       >
         <DialogTitle sx={{ color: '#ffffff' }}>Booking Details</DialogTitle>
         <DialogContent>
-          {selectedForView ? (
-            <Box sx={{ mt: 1 }}>
+          <Tabs value={chatTab} onChange={(e, newValue) => setChatTab(newValue)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tab label="Details" sx={{ color: '#ffffff' }} />
+            <Tab label="Chat" sx={{ color: '#ffffff' }} />
+          </Tabs>
+          {chatTab === 0 && selectedForView && (
+            <Box sx={{ mt: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <PersonIcon sx={{ mr: 1, color: '#e0e0e0' }} />
                 <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 500 }}>{selectedForView.name}</Typography>
@@ -1005,8 +1067,7 @@ export default function BookingsAdmin() {
                   <IconButton size="small" onClick={() => {
                     const show = getShowOnDate(selectedForView.date!);
                     if (show) {
-                      // Assuming there's a way to edit show, perhaps navigate to calendar or open edit
-                      alert(`Edit show: ${show.title}`); // Placeholder, replace with actual navigation
+                      alert(`Edit show: ${show.title}`);
                     }
                   }} sx={{ color: '#ffffff' }} title="Edit Show">
                     <EditIcon />
@@ -1025,6 +1086,14 @@ export default function BookingsAdmin() {
                   Created: {selectedForView.createdAt ? (typeof selectedForView.createdAt === 'number' ? (mounted ? new Date(selectedForView.createdAt).toLocaleString() : new Date(selectedForView.createdAt).toISOString()) : (selectedForView.createdAt?.toDate ? (mounted ? selectedForView.createdAt.toDate().toLocaleString() : selectedForView.createdAt.toDate().toISOString()) : String(selectedForView.createdAt))) : ''}
                 </Typography>
               </Box>
+              {selectedForView.bookingId && (
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <InfoIcon sx={{ mr: 1, color: '#e0e0e0' }} />
+                  <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 500 }}>
+                    Booking ID: {selectedForView.bookingId}
+                  </Typography>
+                </Box>
+              )}
               {selectedForView.message && (
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', mt: 2 }}>
                   <InfoIcon sx={{ mr: 1, mt: 0.25, color: '#e0e0e0' }} />
@@ -1044,7 +1113,39 @@ export default function BookingsAdmin() {
                 </Box>
               )}
             </Box>
-          ) : null}
+          )}
+          {chatTab === 1 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" sx={{ color: '#ffffff', mb: 2 }}>Chat with Customer</Typography>
+              <Box sx={{ height: 300, overflowY: 'auto', bgcolor: 'rgba(0,0,0,0.3)', p: 2, borderRadius: 1, mb: 2 }}>
+                {chatMessages.length === 0 ? (
+                  <Typography variant="body2" sx={{ color: '#bbb', textAlign: 'center', mt: 10 }}>No messages yet.</Typography>
+                ) : (
+                  chatMessages.map((msg) => (
+                    <Box key={msg.id} sx={{ display: 'flex', justifyContent: msg.sender === 'admin' ? 'flex-end' : 'flex-start', mb: 1 }}>
+                      <Box sx={{ maxWidth: '70%', bgcolor: msg.sender === 'admin' ? '#2196f3' : 'rgba(255,255,255,0.1)', color: '#fff', p: 1, borderRadius: 1 }}>
+                        <Typography variant="body2">{msg.message}</Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>{new Date(msg.timestamp).toLocaleTimeString()}</Typography>
+                      </Box>
+                    </Box>
+                  ))
+                )}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Type your message..."
+                  value={newChatMessage}
+                  onChange={(e) => setNewChatMessage(e.target.value)}
+                  onKeyPress={handleChatKeyPress}
+                  sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#ffffff' }, '&:hover fieldset': { borderColor: '#ffffff' }, '&.Mui-focused fieldset': { borderColor: '#ffffff' } }, '& .MuiInputBase-input': { color: '#ffffff' } }}
+                />
+                <Button variant="contained" onClick={sendChatMessage} disabled={!newChatMessage.trim()} startIcon={<SendIcon />} sx={{ minWidth: 80 }}>
+                  Send
+                </Button>
+              </Box>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setViewOpen(false)} sx={{ color: '#ffffff' }}>Close</Button>
