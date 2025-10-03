@@ -37,6 +37,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useTheme } from '@mui/material/styles';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 const locations = ['Bridgend', 'Pontycymer', 'Sarn', 'Maesteg', 'Other'];
 
@@ -85,8 +86,180 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [expectedVerificationCode, setExpectedVerificationCode] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
   const handleChange = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [key]: e.target.value });
+
+  const sendVerificationCode = async () => {
+    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setSubmissionError('Please enter a valid email address first.');
+      return;
+    }
+
+    setSendingVerification(true);
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+      setExpectedVerificationCode(code);
+
+      const verificationBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Email Verification - MJ2 Studios</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #2196f3; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
+        .code { font-size: 24px; font-weight: bold; color: #2196f3; text-align: center; padding: 20px; background-color: #e3f2fd; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJ2 Studios</h1>
+            <p>Michael Jackson Tributes</p>
+        </div>
+        <div class="content">
+            <h2>Email Verification</h2>
+            <p>Please verify your email address to complete your booking.</p>
+            <p>Your verification code is:</p>
+            <div class="code">${code}</div>
+            <p>Enter this code in the booking form to continue.</p>
+            <p>If you didn't request this verification, please ignore this email.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+      `;
+
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: form.email,
+          subject: 'Email Verification - MJ2 Studios',
+          body: verificationBody
+        }),
+      });
+
+      if (response.ok) {
+        setSnackMsg('Verification code sent! Check your email.');
+        setSnackSeverity('success');
+        setOpenSnack(true);
+      } else {
+        throw new Error('Failed to send verification email');
+      }
+    } catch (error) {
+      console.error('Verification email error:', error);
+      setSubmissionError('Failed to send verification email. Please try again.');
+      setSnackMsg('Failed to send verification email.');
+      setSnackSeverity('error');
+      setOpenSnack(true);
+    } finally {
+      setSendingVerification(false);
+    }
+  };
+
+  const verifyCode = async () => {
+    if (!verificationCode.trim()) {
+      setSubmissionError('Please enter the verification code.');
+      return;
+    }
+
+    setVerifyingCode(true);
+    // Simulate verification delay for UX
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    if (verificationCode === expectedVerificationCode) {
+      setEmailVerified(true);
+      setSubmissionError(null);
+
+      // Send verification success email
+      try {
+        const successEmailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Email Verified - MJ2 Studios</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #4caf50; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+        .checkmark { font-size: 48px; color: #4caf50; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJ2 Studios</h1>
+            <p>Michael Jackson Tributes</p>
+        </div>
+        <div class="content">
+            <div class="checkmark">✓</div>
+            <h2>Email Verification Successful!</h2>
+            <p>Dear ${form.name || 'Valued Customer'},</p>
+            <p>Your email address has been successfully verified for your booking with MJ2 Studios.</p>
+            <p>You can now complete your booking form submission. We're excited to help you with your Michael Jackson tribute event!</p>
+            <p><strong>Next Steps:</strong></p>
+            <ul>
+                <li>Complete the reCAPTCHA verification</li>
+                <li>Submit your booking form</li>
+                <li>You'll receive a booking confirmation email</li>
+            </ul>
+            <p>If you have any questions, feel free to contact us.</p>
+            <p>Best regards,<br>The MJ2 Studios Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
+            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: form.email,
+            subject: 'Email Verified - MJ2 Studios',
+            body: successEmailBody
+          }),
+        });
+      } catch (emailError) {
+        console.error('Failed to send verification success email:', emailError);
+        // Don't block the verification process for email failure
+      }
+
+      setSnackMsg('Email verified successfully! Check your email for confirmation.');
+      setSnackSeverity('success');
+      setOpenSnack(true);
+    } else {
+      setSubmissionError('Invalid verification code. Please try again.');
+      setSnackMsg('Invalid verification code.');
+      setSnackSeverity('error');
+      setOpenSnack(true);
+    }
+    setVerifyingCode(false);
+  };
+
+  const handleRecaptchaChange = (token: string | null) => {
+    setRecaptchaToken(token);
+  };
 
   const validate = (vals: FormState) => {
     const e: Partial<Record<keyof FormState, string>> = {};
@@ -129,6 +302,22 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
     if (Object.keys(validation).length) {
       setSubmissionError('Please fix the errors shown below.');
       setSnackMsg('Please fix validation errors before submitting.');
+      setSnackSeverity('error');
+      setOpenSnack(true);
+      return;
+    }
+
+    if (!emailVerified) {
+      setSubmissionError('Please verify your email address before submitting.');
+      setSnackMsg('Please verify your email first.');
+      setSnackSeverity('error');
+      setOpenSnack(true);
+      return;
+    }
+
+    if (!recaptchaToken) {
+      setSubmissionError('Please complete the reCAPTCHA verification.');
+      setSnackMsg('Please complete the reCAPTCHA.');
       setSnackSeverity('error');
       setOpenSnack(true);
       return;
@@ -338,7 +527,13 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
                 placeholder="john@example.com"
                 variant="outlined"
                 value={form.email}
-                onChange={handleChange('email')}
+                onChange={(e) => {
+                  handleChange('email')(e);
+                  // Reset verification when email changes
+                  setEmailVerified(false);
+                  setExpectedVerificationCode(null);
+                  setVerificationCode('');
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -351,6 +546,52 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
                 error={!!errors.email}
                 helperText={errors.email || 'We\'ll contact you to confirm'}
               />
+              {form.email && !emailVerified && (
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={sendVerificationCode}
+                    disabled={sendingVerification}
+                    sx={{ minWidth: 150 }}
+                  >
+                    {sendingVerification ? 'Sending...' : 'Send Verification Code'}
+                  </Button>
+                  <TextField
+                    label="Enter Verification Code"
+                    placeholder="123456"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    sx={{ flex: 1, '& .MuiOutlinedInput-root': { bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' } }}
+                    InputLabelProps={{ sx: { color: theme.palette.text.secondary } }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={verifyCode}
+                    disabled={verifyingCode || !verificationCode.trim()}
+                    color="success"
+                    startIcon={verifyingCode ? <CircularProgress size={16} color="inherit" /> : null}
+                  >
+                    {verifyingCode ? 'Verifying...' : 'Verify'}
+                  </Button>
+                </Box>
+              )}
+              {emailVerified && (
+                <Box sx={{
+                  p: 2,
+                  bgcolor: 'rgba(76, 175, 80, 0.1)',
+                  border: '1px solid #4caf50',
+                  borderRadius: 2,
+                  mt: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <span style={{ color: '#4caf50', fontWeight: 'bold' }}>✓</span>
+                  <Typography variant="body2" sx={{ color: '#4caf50', fontWeight: 500 }}>
+                    Email verified successfully!
+                  </Typography>
+                </Box>
+              )}
             </Box>
             <Box>
               <TextField
@@ -490,6 +731,16 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
                 helperText={errors.message}
               />
             </Box>
+
+            {/* reCAPTCHA */}
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+              <ReCAPTCHA
+                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
+                onChange={handleRecaptchaChange}
+                theme={theme.palette.mode === 'dark' ? 'dark' : 'light'}
+              />
+            </Box>
+
             <Box
               sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}
             >

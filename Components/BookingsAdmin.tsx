@@ -102,6 +102,7 @@ export default function BookingsAdmin() {
   const [sortField, setSortField] = useState<string>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
+  const [cancellationReason, setCancellationReason] = useState('');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousLengthRef = useRef(0);
 
@@ -260,7 +261,6 @@ export default function BookingsAdmin() {
       let emailSent = false;
       if (booking.email && nextStatus !== 'pending') {
         try {
-          console.log('Sending status update email to:', booking.email);
           const subject = nextStatus === 'confirmed' ? 'Booking Confirmed - MJ2 Studios' : 'Booking Update - MJ2 Studios';
           const statusMessage = nextStatus === 'confirmed' ? 'great news! Your booking has been confirmed.' : 'we regret to inform you that your booking has been cancelled.';
           const emailBody = `
@@ -296,8 +296,8 @@ export default function BookingsAdmin() {
                 ${booking.venue ? `<li><strong>Venue:</strong> ${booking.venue}</li>` : ''}
                 ${booking.date ? `<li><strong>Date:</strong> ${booking.date}</li>` : ''}
                 ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
-                <li><strong>Status:</strong> ${nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}</li>
             </ul>
+            <p><strong>Status:</strong> ${nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}</p>
             ${nextStatus === 'confirmed' ? '<p>We look forward to performing for you!</p>' : '<p>If you have any questions, please contact us.</p>'}
             <p>Best regards,<br>The MJ2 Studios Team</p>
         </div>
@@ -398,14 +398,14 @@ export default function BookingsAdmin() {
             <ul>
                 <li><strong>Name:</strong> ${booking.name}</li>
                 <li><strong>Email:</strong> ${booking.email}</li>
-                ${booking.phone ? `<li><strong>Phone:</strong> ${booking.phone}</li>` : ''}
-                ${booking.location ? `<li><strong>Location:</strong> ${booking.location}</li>` : ''}
-                ${booking.venue ? `<li><strong>Venue:</strong> ${booking.venue}</li>` : ''}
-                ${booking.date ? `<li><strong>Date:</strong> ${booking.date}</li>` : ''}
-                ${booking.time ? `<li><strong>Time:</strong> ${booking.time}</li>` : ''}
+                <li><strong>Phone:</strong> ${booking.phone || ''}</li>
+                <li><strong>Location:</strong> ${booking.location || ''}</li>
+                <li><strong>Venue:</strong> ${booking.venue || ''}</li>
+                <li><strong>Preferred Date:</strong> ${booking.date || ''}</li>
+                <li><strong>Preferred Time:</strong> ${booking.time || ''}</li>
                 ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
-                <li><strong>Status:</strong> ${status.charAt(0).toUpperCase() + status.slice(1)}</li>
             </ul>
+            <p><strong>Status:</strong> ${status.charAt(0).toUpperCase() + status.slice(1)}</p>
             ${status === 'confirmed' ? '<p>We look forward to performing for you!</p>' : '<p>If you have any questions, please contact us.</p>'}
             <p>Best regards,<br>The MJ2 Studios Team</p>
         </div>
@@ -767,7 +767,9 @@ export default function BookingsAdmin() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedBookings.map((b) => (
+                {paginatedBookings.map((b) => {
+                  console.log('Rendering booking row for:', b.name, 'status:', b.status, 'email:', b.email);
+                  return (
                   <TableRow key={b.id} hover sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
                     <TableCell sx={{ color: '#ffffff' }}>
                       <Checkbox
@@ -810,7 +812,8 @@ export default function BookingsAdmin() {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -1052,6 +1055,226 @@ export default function BookingsAdmin() {
           <Alert severity={snack.severity} onClose={() => setSnack({ ...snack, open: false })} sx={{ width: '100%' }}>{snack.message}</Alert>
         </Snackbar>
         <audio ref={audioRef} src="/app/notification_Sound.mp3" preload="auto" />
+
+        {/* Bulk Email Functions */}
+        <Box sx={{ mt: 4, p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: '#ffffff' }}>Bulk Email Functions</Typography>
+
+          {/* Cancellation Reason Input */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Cancellation Reason (for cancellation emails)"
+              placeholder="Please enter the reason for cancellation..."
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+              multiline
+              rows={2}
+              InputLabelProps={{ sx: { color: '#ffffff' } }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#ffffff' },
+                  '&:hover fieldset': { borderColor: '#ffffff' },
+                  '&.Mui-focused fieldset': { borderColor: '#ffffff' }
+                },
+                '& .MuiInputBase-input': { color: '#ffffff' }
+              }}
+            />
+          </Box>
+
+          <Stack direction="row" spacing={2} flexWrap="wrap">
+            <Button
+              variant="contained"
+              color="success"
+              onClick={async () => {
+                const confirmedBookings = bookings.filter(b => b.status === 'confirmed' && b.email);
+                if (confirmedBookings.length === 0) {
+                  setSnack({ open: true, message: 'No confirmed bookings with email addresses found.', severity: 'error' });
+                  return;
+                }
+
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (const booking of confirmedBookings) {
+                  try {
+                    const emailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Booking Confirmed - MJ2 Studios</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #4caf50; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJ2 Studios</h1>
+            <p>Michael Jackson Tributes</p>
+        </div>
+        <div class="content">
+            <h2>Booking Confirmation</h2>
+            <p>Dear ${booking.name},</p>
+            <p>We have great news! Your booking has been confirmed.</p>
+            <p><strong>Booking Details:</strong></p>
+            <ul>
+                <li><strong>Name:</strong> ${booking.name}</li>
+                <li><strong>Email:</strong> ${booking.email}</li>
+                <li><strong>Phone:</strong> ${booking.phone || ''}</li>
+                <li><strong>Location:</strong> ${booking.location || ''}</li>
+                <li><strong>Venue:</strong> ${booking.venue || ''}</li>
+                <li><strong>Preferred Date:</strong> ${booking.date || ''}</li>
+                <li><strong>Preferred Time:</strong> ${booking.time || ''}</li>
+                ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
+            </ul>
+            <p><strong>Status:</strong> Confirmed</p>
+            <p>We look forward to performing for you!</p>
+            <p>Best regards,<br>The MJ2 Studios Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
+            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
+        </div>
+    </div>
+</body>
+</html>
+                    `;
+                    const response = await fetch('/api/send-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        to: booking.email,
+                        subject: 'Booking Confirmed - MJ2 Studios',
+                        body: emailBody
+                      }),
+                    });
+                    if (response.ok) {
+                      successCount++;
+                    } else {
+                      errorCount++;
+                      console.error('Failed to send confirmation email to:', booking.email);
+                    }
+                  } catch (error) {
+                    errorCount++;
+                    console.error('Error sending confirmation email to:', booking.email, error);
+                  }
+                }
+
+                setSnack({
+                  open: true,
+                  message: `Sent ${successCount} confirmation emails${errorCount > 0 ? ` (${errorCount} failed)` : ''}`,
+                  severity: errorCount > 0 ? 'error' : 'success'
+                });
+              }}
+            >
+              Send Confirmation Emails to All Confirmed Bookings
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={async () => {
+                if (!cancellationReason.trim()) {
+                  setSnack({ open: true, message: 'Please enter a cancellation reason.', severity: 'error' });
+                  return;
+                }
+
+                const cancelledBookings = bookings.filter(b => b.status === 'cancelled' && b.email);
+                if (cancelledBookings.length === 0) {
+                  setSnack({ open: true, message: 'No cancelled bookings with email addresses found.', severity: 'error' });
+                  return;
+                }
+
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (const booking of cancelledBookings) {
+                  try {
+                    const emailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Booking Update - MJ2 Studios</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f44336; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJ2 Studios</h1>
+            <p>Michael Jackson Tributes</p>
+        </div>
+        <div class="content">
+            <h2>Booking Status Update</h2>
+            <p>Dear ${booking.name},</p>
+            <p>We regret to inform you that your booking has been cancelled.</p>
+            <p><strong>Cancel Notice:</strong> ${cancellationReason}</p>
+            <p><strong>Booking Details:</strong></p>
+            <ul>
+                <li><strong>Name:</strong> ${booking.name}</li>
+                <li><strong>Email:</strong> ${booking.email}</li>
+                <li><strong>Phone:</strong> ${booking.phone || ''}</li>
+                <li><strong>Location:</strong> ${booking.location || ''}</li>
+                <li><strong>Venue:</strong> ${booking.venue || ''}</li>
+                <li><strong>Preferred Date:</strong> ${booking.date || ''}</li>
+                <li><strong>Preferred Time:</strong> ${booking.time || ''}</li>
+                ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
+            </ul>
+            <p><strong>Status:</strong> Cancelled</p>
+            <p>If you have any questions, please contact us.</p>
+            <p>Best regards,<br>The MJ2 Studios Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
+            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
+        </div>
+    </div>
+</body>
+</html>
+                    `;
+                    const response = await fetch('/api/send-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        to: booking.email,
+                        subject: 'Booking Update - MJ2 Studios',
+                        body: emailBody
+                      }),
+                    });
+                    if (response.ok) {
+                      successCount++;
+                    } else {
+                      errorCount++;
+                      console.error('Failed to send cancellation email to:', booking.email);
+                    }
+                  } catch (error) {
+                    errorCount++;
+                    console.error('Error sending cancellation email to:', booking.email, error);
+                  }
+                }
+
+                setSnack({
+                  open: true,
+                  message: `Sent ${successCount} cancellation emails${errorCount > 0 ? ` (${errorCount} failed)` : ''}`,
+                  severity: errorCount > 0 ? 'error' : 'success'
+                });
+              }}
+            >
+              Send Cancellation Emails to All Cancelled Bookings
+            </Button>
+          </Stack>
+        </Box>
       </Paper>
     </motion.div>
   );
