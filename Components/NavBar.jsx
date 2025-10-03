@@ -141,7 +141,7 @@ function NavBar() {
     <AppBar position="sticky" elevation={6} sx={{
       top: 0,
       zIndex: (theme) => (theme.zIndex?.appBar ?? 1100) + 10,
-      background: 'rgba(35,37,38,0.85)',
+      background: 'linear-gradient(135deg, #000 0%, #1a1a2e 50%, #000 100%)',
       backdropFilter: 'blur(12px)',
       boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
       borderBottom: '1px solid #222',

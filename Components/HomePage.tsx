@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -8,6 +8,8 @@ import Tooltip from '@mui/material/Tooltip';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import { MusicNote, Star, TheaterComedy } from '@mui/icons-material';
+import { motion } from "framer-motion";
+import { TypeAnimation } from 'react-type-animation';
 
 const openingTimes = [
   { day: 'Monday', open: '09:00', close: '16:00' },
@@ -45,6 +47,7 @@ const places = [
     image: 'https://i2-prod.walesonline.co.uk/incoming/article21622288.ece/ALTERNATES/s298/0_rbp_mai100821maesteg_10825JPG.jpg',
   },
 ];
+
 
 function getCurrentTimeParts() {
   const now = new Date();
@@ -147,8 +150,27 @@ function HomePage() {
           0% { opacity: 0; transform: translateY(30px); }
           100% { opacity: 1; transform: translateY(0); }
         }
+        body {
+          cursor: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxMCIgZmlsbD0iI2ZmZDcwMCIvPjwvc3ZnPg=='), auto;
+        }
+        .glitter {
+          position: relative;
+        }
+        .glitter::before {
+          content: '✨';
+          position: absolute;
+          top: -10px;
+          right: -10px;
+          animation: glitter 1s infinite;
+          font-size: 1.5em;
+        }
+        @keyframes glitter {
+          0%,100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
       `}</style>
       {/* HomePageInfo */}
+      <div>
       <Box sx={{
         width: '100%',
         minHeight: '40vh',
@@ -158,7 +180,7 @@ function HomePage() {
         justifyContent: 'center',
         textAlign: 'center',
         px: 2,
-        background: 'linear-gradient(45deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)',
+        background: 'linear-gradient(135deg, rgba(255,215,0,0.05) 0%, rgba(26,26,46,0.1) 50%, rgba(255,215,0,0.05) 100%)',
         borderRadius: 4,
         mx: 2,
         my: 4,
@@ -197,7 +219,6 @@ function HomePage() {
         alignItems: 'center',
         gap: 20,
         position: 'relative',
-        animation: 'fadeInUp 1.2s ease-out 0.5s both',
         borderRadius: '20px',
       }}>
         <div style={{ textAlign: 'center', maxWidth: 900, position: 'relative' }}>
@@ -214,21 +235,39 @@ function HomePage() {
             gap: 1,
             flexWrap: 'wrap',
             animation: 'titleGlow 3s ease-in-out infinite',
-          }}>
-            <TheaterComedy sx={{
-              fontSize: 'clamp(2.2rem, 4vw, 3.2rem)',
-              color: '#ffd700',
-              animation: 'iconDance 2s ease-in-out infinite',
-              filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.5))',
-            }} />
-            MJ2 Tribute — Live Shows & Bookings
-            <MusicNote sx={{
-              fontSize: 'clamp(2.2rem, 4vw, 3.2rem)',
-              color: '#ffd700',
-              animation: 'iconDance 2s ease-in-out infinite reverse',
-              filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.5))',
-            }} />
-          </h1>
+          }}/>
+            <h1 style={{
+              margin: 0,
+                fontSize: 'clamp(2rem, 5vw, 3.2rem)',
+                letterSpacing: '3px',
+                fontWeight: 900,
+                color: '#fff',
+                textShadow: '0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.6), 0 4px 20px rgba(0,0,0,0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
+                flexWrap: 'nowrap',
+                animation: 'titleGlow 3s ease-in-out infinite',
+                height: '150px',
+              }}
+            >
+              <TheaterComedy sx={{
+                fontSize: 'clamp(2.2rem, 4vw, 3.2rem)',
+                color: '#ffd700',
+                animation: 'iconDance 2s ease-in-out infinite',
+                filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.5))',
+              }} />
+              <div style={{ width: '600px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <TypeAnimation sequence={['MJ2 Tribute — Live Shows & Bookings', 2000, 'Authentic MJ Experience', 2000, 'Thrilling Performances Await', 2000, 'Unforgettable MJ Magic', 2000]} wrapper="span" cursor={false} repeat={Infinity} />
+              </div>
+              <MusicNote sx={{
+                fontSize: 'clamp(2.2rem, 4vw, 3.2rem)',
+                color: '#ffd700',
+                animation: 'iconDance 2s ease-in-out infinite reverse',
+                filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.5))',
+              }} />
+            </h1>
           <p style={{
             marginTop: 20,
             color: '#e0e0e0',
@@ -261,6 +300,7 @@ function HomePage() {
           }
         `}</style>
       </section>
+      </div>
 
       <Box sx={{ width: '60%', height: '3px', background: 'linear-gradient(90deg, #ffd700 0%, #fff 50%, #ffd700 100%)', mx: 'auto', my: 6, borderRadius: 2, boxShadow: '0 0 15px rgba(255,215,0,0.5)' }} />
 
@@ -301,7 +341,7 @@ function HomePage() {
               }}>
                 <Typography variant="h6" sx={{
                   fontWeight: 800,
-                  mb: 2,
+                  mb: 1,
                   color: '#ffd700',
                   letterSpacing: 1.5,
                   display: 'flex',
@@ -318,6 +358,14 @@ function HomePage() {
                     marginLeft: '8px',
                     filter: 'drop-shadow(0 0 5px rgba(255,215,0,0.5))',
                   }}>📅</span>
+                </Typography>
+                <Typography variant="body2" sx={{
+                  color: '#bbb',
+                  mb: 2,
+                  textAlign: 'center',
+                  fontStyle: 'italic',
+                }}>
+                  All times are shown in UK Time
                 </Typography>
                 <Box sx={{
                   display: 'flex',
@@ -529,7 +577,7 @@ function HomePage() {
                   }}
                 >
                   {places.map((place, idx) => (
-                    <Card key={idx} className="sparkle" sx={{
+                    <Card key={idx} className="sparkle glitter" sx={{
                       borderRadius: 4,
                       boxShadow: '0 8px 32px rgba(0,0,0,0.37)',
                       overflow: 'hidden',
@@ -556,7 +604,7 @@ function HomePage() {
                         pointerEvents: 'none',
                       },
                       '&:hover': {
-                        transform: 'translateY(-8px) scale(1.03)',
+                        transform: 'perspective(1000px) translateY(-8px) scale(1.03) rotateX(5deg) rotateY(5deg)',
                         boxShadow: '0 20px 60px rgba(255,215,0,0.3), 0 0 30px rgba(255,215,0,0.2)',
                         border: '1px solid rgba(255,215,0,0.3)',
                         '&::before': {
@@ -664,8 +712,8 @@ function HomePage() {
                           </Button>
                         </Box>
                       </CardContent>
-                    </Card>
-                  ))}
+                  </Card>
+                ))}
                 </Box>
               </Box>
             </div>
