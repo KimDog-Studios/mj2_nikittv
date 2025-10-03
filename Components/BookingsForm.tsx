@@ -556,6 +556,36 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
                 error={!!errors.message}
                 helperText={errors.message}
               />
+
+              {/* Terms and Conditions */}
+              <Box sx={{ mt: 3 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={form.acceptTerms}
+                      onChange={(e) => setForm({ ...form, acceptTerms: e.target.checked })}
+                      color="primary"
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                      I accept the{' '}
+                      <span style={{ color: theme.palette.primary.main, textDecoration: 'underline', cursor: 'pointer' }}>
+                        Terms and Conditions
+                      </span>
+                      {' '}and{' '}
+                      <span style={{ color: theme.palette.primary.main, textDecoration: 'underline', cursor: 'pointer' }}>
+                        Privacy Policy
+                      </span>
+                    </Typography>
+                  }
+                />
+                {errors.acceptTerms && (
+                  <Typography variant="body2" sx={{ color: theme.palette.error.main, mt: 1 }}>
+                    {errors.acceptTerms}
+                  </Typography>
+                )}
+              </Box>
             </Box>
           </Box>
         );
@@ -627,36 +657,6 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
               Final Step - Complete Security
             </Typography>
 
-            {/* Terms and Conditions */}
-            <Box sx={{ mb: 4 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={form.acceptTerms}
-                    onChange={(e) => setForm({ ...form, acceptTerms: e.target.checked })}
-                    color="primary"
-                  />
-                }
-                label={
-                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                    I accept the{' '}
-                    <span style={{ color: theme.palette.primary.main, textDecoration: 'underline', cursor: 'pointer' }}>
-                      Terms and Conditions
-                    </span>
-                    {' '}and{' '}
-                    <span style={{ color: theme.palette.primary.main, textDecoration: 'underline', cursor: 'pointer' }}>
-                      Privacy Policy
-                    </span>
-                  </Typography>
-                }
-              />
-              {errors.acceptTerms && (
-                <Typography variant="body2" sx={{ color: theme.palette.error.main, mt: 1, textAlign: 'center' }}>
-                  {errors.acceptTerms}
-                </Typography>
-              )}
-            </Box>
-
             {/* reCAPTCHA */}
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
               <ReCAPTCHA
@@ -716,7 +716,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
     }
     if (activeStep === 1) {
       const stepValidation = validate(form);
-      const hasStepErrors = ['name', 'email', 'phone', 'location', 'venue', 'date', 'time', 'message'].some(field => stepValidation[field as keyof FormState]);
+      const hasStepErrors = ['name', 'email', 'phone', 'location', 'venue', 'date', 'time', 'message', 'acceptTerms'].some(field => stepValidation[field as keyof FormState]);
       if (hasStepErrors) {
         setErrors(stepValidation);
         setSnackMsg('Please fill in all required fields correctly.');
