@@ -311,7 +311,7 @@ export default function ShowsCalendar() {
   });
 
   return (
-    <Paper sx={{ p: 2, mt: 3, background: 'linear-gradient(135deg, #1e1e1e 0%, #3a3a3a 100%)', borderRadius: 3, color: '#f5f5f5' }}>
+    <Paper sx={{ p: {xs:1, sm:2}, mt: 3, background: 'linear-gradient(135deg, #1e1e1e 0%, #3a3a3a 100%)', borderRadius: 3, color: '#f5f5f5' }}>
       <Stack direction="column" spacing={1}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="h5" sx={{ fontWeight: 700, color: '#ffffff' }}>Shows Calendar</Typography>
@@ -393,7 +393,7 @@ export default function ShowsCalendar() {
                   onClick={() => openDay(c.key)}
                   sx={{
                     p: 1.25,
-                    minHeight: 120,
+                    minHeight: {xs:100, sm:120},
                     borderRadius: 2,
                     cursor: 'pointer',
                     background: c.inMonth ? 'linear-gradient(135deg, #4b0082, #8a2be2)' : '#2a2a2a',

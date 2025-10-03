@@ -192,28 +192,34 @@ function HomePage() {
         <Typography variant="body1" sx={{ color: '#bbb', maxWidth: 760 }}>
           Professional tribute acts and bookings across South Wales. Browse our areas covered, opening times, and manage your bookings from the navigation above.
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, mt: 3, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pic1.png" alt="Pic1" style={{ width: 160, height: 'auto', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)' }} />
-          <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pic2.png" alt="Pic2" style={{ width: 160, height: 'auto', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)' }} />
-          <iframe
-            width="360"
-            height="280"
-            src="https://www.youtube.com/embed/yt6zHBd7Xwc?autoplay=1&mute=1&loop=1&playlist=yt6zHBd7Xwc&controls=1"
-            title="MJ2 Video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)' }}
-          ></iframe>
+        <Box sx={{ display: 'flex', gap: {xs: 1, sm: 2}, mt: 3, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Box sx={{ width: {xs: 120, sm: 160}, height: 'auto', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+            <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pic1.png" alt="Pic1" style={{ width: '100%', height: 'auto' }} />
+          </Box>
+          <Box sx={{ width: {xs: 120, sm: 160}, height: 'auto', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+            <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pic2.png" alt="Pic2" style={{ width: '100%', height: 'auto' }} />
+          </Box>
+          <Box sx={{ width: {xs: '90%', sm: 360}, height: {xs: 200, sm: 280}, borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://www.youtube.com/embed/yt6zHBd7Xwc?autoplay=1&mute=1&loop=1&playlist=yt6zHBd7Xwc&controls=1"
+              title="MJ2 Video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ border: 'none' }}
+            ></iframe>
+          </Box>
         </Box>
       </Box>
 
       <Box sx={{ width: '80%', height: '2px', background: 'linear-gradient(90deg, transparent 0%, #ffd700 50%, transparent 100%)', mx: 'auto', my: 4, boxShadow: '0 0 10px #ffd700' }} />
 
       {/* Hero */}
-      <section style={{
+      <Box sx={{
         maxWidth: 1200,
-        margin: '40px auto',
-        padding: '40px 20px',
+        mx: 'auto',
+        p: {xs: '20px 10px', sm: '40px 20px'},
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -299,13 +305,13 @@ function HomePage() {
             50% { background-position: 100% 50%; }
           }
         `}</style>
-      </section>
+      </Box>
       </div>
 
       <Box sx={{ width: '60%', height: '3px', background: 'linear-gradient(90deg, #ffd700 0%, #fff 50%, #ffd700 100%)', mx: 'auto', my: 6, borderRadius: 2, boxShadow: '0 0 15px rgba(255,215,0,0.5)' }} />
 
       {/* Combined opening times + places */}
-      <section style={{ maxWidth: 1100, margin: '12px auto 60px', padding: '20px', display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
+      <Box sx={{ maxWidth: 1100, mx: 'auto', my: '12px auto 60px', p: {xs: '10px', sm: '20px'}, display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
           <div style={{ display: 'flex', gap: 18, flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center' }}>
             <div style={{ display: 'flex', gap: 18, flexDirection: 'column', alignItems: 'stretch' }}>
@@ -317,8 +323,8 @@ function HomePage() {
                 borderRadius: 5,
                 boxShadow: '0 8px 32px rgba(0,0,0,0.37)',
                 border: '1px solid rgba(255,255,255,0.1)',
-                p: 3,
-                maxWidth: 380,
+                p: {xs: 2, sm: 3},
+                maxWidth: {xs: '100%', sm: 380},
                 mx: 'auto',
                 my: 4,
                 textAlign: 'center',
@@ -719,7 +725,7 @@ function HomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </Box>
     </div>
   );
 }

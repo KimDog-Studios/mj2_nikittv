@@ -254,7 +254,7 @@ export default function BookingsAdmin() {
 
   return (
     <Fade in={true} timeout={600}>
-      <Paper sx={{ mt: 4, p: 3, borderRadius: 2, boxShadow: 3 }}>
+      <Paper sx={{ mt: 4, p: {xs:1, sm:3}, borderRadius: 2, boxShadow: 3 }}>
         <Fade in={true} timeout={800}>
           <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>Bookings Management</Typography>
         </Fade>
@@ -299,7 +299,7 @@ export default function BookingsAdmin() {
       {!loading && !error ? (
         <Fade in={true} timeout={1200}>
           <Box>
-            <TableContainer>
+            <TableContainer sx={{ overflowX: 'auto' }}>
             <Table>
               <TableHead sx={{ bgcolor: 'grey.100' }}>
                 <TableRow>
