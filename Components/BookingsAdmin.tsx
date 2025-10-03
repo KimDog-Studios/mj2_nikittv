@@ -60,7 +60,9 @@ type Booking = {
   email?: string;
   phone?: string;
   location?: string;
+  venue?: string;
   date?: string;
+  time?: string;
   message?: string;
   createdAt?: any;
   status?: 'pending' | 'confirmed' | 'cancelled';
@@ -253,6 +255,72 @@ export default function BookingsAdmin() {
       } else {
         await updateDoc(doc(db, 'bookings', booking.id), payload);
       }
+
+      // Send status update email if email exists
+      if (booking.email && nextStatus !== 'pending') {
+        try {
+          const subject = nextStatus === 'confirmed' ? 'Booking Confirmed - MJ2 Studios' : 'Booking Update - MJ2 Studios';
+          const statusMessage = nextStatus === 'confirmed' ? 'great news! Your booking has been confirmed.' : 'we regret to inform you that your booking has been cancelled.';
+          const emailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>${subject}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: ${nextStatus === 'confirmed' ? '#4caf50' : '#f44336'}; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJ2 Studios</h1>
+            <p>Michael Jackson Tributes</p>
+        </div>
+        <div class="content">
+            <h2>Booking Status Update</h2>
+            <p>Dear ${booking.name},</p>
+            <p>We have an update regarding your booking. ${statusMessage}</p>
+            <p><strong>Booking Details:</strong></p>
+            <ul>
+                <li><strong>Name:</strong> ${booking.name}</li>
+                <li><strong>Email:</strong> ${booking.email}</li>
+                ${booking.phone ? `<li><strong>Phone:</strong> ${booking.phone}</li>` : ''}
+                ${booking.location ? `<li><strong>Location:</strong> ${booking.location}</li>` : ''}
+                ${booking.venue ? `<li><strong>Venue:</strong> ${booking.venue}</li>` : ''}
+                ${booking.date ? `<li><strong>Date:</strong> ${booking.date}</li>` : ''}
+                ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
+                <li><strong>Status:</strong> ${nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}</li>
+            </ul>
+            ${nextStatus === 'confirmed' ? '<p>We look forward to performing for you!</p>' : '<p>If you have any questions, please contact us.</p>'}
+            <p>Best regards,<br>The MJ2 Studios Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
+            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
+        </div>
+    </div>
+</body>
+</html>
+          `;
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: booking.email,
+              subject,
+              body: emailBody
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send status update email:', emailError);
+        }
+      }
+
       setSnack({ open: true, message: `Status updated to ${nextStatus}`, severity: 'success' });
     } catch (err: any) {
       console.error(err);
@@ -287,6 +355,72 @@ export default function BookingsAdmin() {
             await rtdbUpdate(rref(rtdb, `bookings/${id}`), payload);
           } else {
             await updateDoc(doc(db, 'bookings', id), payload);
+          }
+
+          // Send status update email if email exists and status is not pending
+          if (booking.email && status !== 'pending') {
+            try {
+              const subject = status === 'confirmed' ? 'Booking Confirmed - MJ2 Studios' : 'Booking Update - MJ2 Studios';
+              const statusMessage = status === 'confirmed' ? 'great news! Your booking has been confirmed.' : 'we regret to inform you that your booking has been cancelled.';
+              const emailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>${subject}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: ${status === 'confirmed' ? '#4caf50' : '#f44336'}; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJ2 Studios</h1>
+            <p>Michael Jackson Tributes</p>
+        </div>
+        <div class="content">
+            <h2>Booking Status Update</h2>
+            <p>Dear ${booking.name},</p>
+            <p>We have an update regarding your booking. ${statusMessage}</p>
+            <p><strong>Booking Details:</strong></p>
+            <ul>
+                <li><strong>Name:</strong> ${booking.name}</li>
+                <li><strong>Email:</strong> ${booking.email}</li>
+                ${booking.phone ? `<li><strong>Phone:</strong> ${booking.phone}</li>` : ''}
+                ${booking.location ? `<li><strong>Location:</strong> ${booking.location}</li>` : ''}
+                ${booking.venue ? `<li><strong>Venue:</strong> ${booking.venue}</li>` : ''}
+                ${booking.date ? `<li><strong>Date:</strong> ${booking.date}</li>` : ''}
+                ${booking.time ? `<li><strong>Time:</strong> ${booking.time}</li>` : ''}
+                ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
+                <li><strong>Status:</strong> ${status.charAt(0).toUpperCase() + status.slice(1)}</li>
+            </ul>
+            ${status === 'confirmed' ? '<p>We look forward to performing for you!</p>' : '<p>If you have any questions, please contact us.</p>'}
+            <p>Best regards,<br>The MJ2 Studios Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
+            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
+        </div>
+    </div>
+</body>
+</html>
+              `;
+              await fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: booking.email,
+                  subject,
+                  body: emailBody
+                }),
+              });
+            } catch (emailError) {
+              console.error('Failed to send bulk status update email:', emailError);
+            }
           }
         }
       }
