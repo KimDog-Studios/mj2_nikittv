@@ -28,6 +28,9 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { ref as rref, onValue } from 'firebase/database';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import InfoIcon from '@mui/icons-material/Info';
 
 type Show = {
   id: string;
@@ -329,6 +332,20 @@ export default function ShowsCalendar() {
             <IconButton size="small" onClick={nextMonth}><ChevronRightIcon /></IconButton>
           </Stack>
         )}
+        {viewMode === 'calendar' && upcomingShows.length > 0 && (
+          <Box sx={{ mt: 1, p: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 1 }}>
+            <Typography variant="subtitle2" sx={{ color: '#ffffff', fontWeight: 600 }}>Next Upcoming Shows</Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 0.5, overflowX: { xs: 'hidden', sm: 'auto' } }}>
+              {upcomingShows.slice(0, 3).map((s) => (
+                <Box key={s.id} sx={{ minWidth: { xs: '100%', sm: 200 }, p: 1, background: 'rgba(255,255,255,0.1)', borderRadius: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#ffffff' }}>{s.title}</Typography>
+                  <Typography variant="caption" sx={{ color: '#e0e0e0' }}>{s.start.toLocaleDateString()} {s.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>
+                  {s.venue && <Typography variant="caption" sx={{ color: '#e0e0e0' }}>{s.venue}</Typography>}
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+        )}
       </Stack>
       <Divider sx={{ my: 1 }} />
 
@@ -358,15 +375,37 @@ export default function ShowsCalendar() {
             </FormControl>
           </Stack>
           <Typography variant="h6" sx={{ mt: 2, color: '#ffffff' }}>Upcoming Shows ({filteredUpcoming.length})</Typography>
-          <List>
+          <List sx={{ mt: 1 }}>
             {filteredUpcoming.map((s) => (
-              <ListItem key={s.id} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                <ListItemText
-                  primary={`${s.title}${s.venue ? ' @ ' + s.venue : ''}`}
-                  secondary={`${mounted ? s.start.toLocaleString() : s.start.toISOString()}${s.end ? ' — ' + (mounted ? s.end.toLocaleString() : s.end.toISOString()) : ''}${s.description ? ' — ' + s.description : ''}`}
-                />
-                {isActive(s) && <Chip label="LIVE" color="error" size="small" />}
-                {!isActive(s) && (s.start.getTime() - now.getTime()) < 86400000 && <Chip label="Soon" color="warning" size="small" />}
+              <ListItem key={s.id} sx={{ borderBottom: 1, borderColor: 'divider', p: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 1, mb: 1 }}>
+                <Box sx={{ width: '100%' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#ffffff', fontSize: '1.25rem' }}>{s.title}</Typography>
+                    <Box>
+                      {isActive(s) && <Chip label="LIVE" color="error" sx={{ mr: 1, fontWeight: 600 }} />}
+                      {!isActive(s) && (s.start.getTime() - now.getTime()) < 86400000 && <Chip label="Soon" color="warning" sx={{ fontWeight: 600 }} />}
+                    </Box>
+                  </Box>
+                  {s.venue && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <LocationOnIcon sx={{ color: '#e0e0e0', mr: 1 }} />
+                      <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 500 }}>{s.venue}</Typography>
+                    </Box>
+                  )}
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: s.description ? 1 : 0 }}>
+                    <ScheduleIcon sx={{ color: '#e0e0e0', mr: 1 }} />
+                    <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 500 }}>
+                      {mounted ? s.start.toLocaleDateString() + ' ' + s.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : s.start.toISOString().slice(0,16).replace('T', ' ')}
+                      {s.end && ` — ${mounted ? s.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : s.end.toISOString().slice(11,16)}`}
+                    </Typography>
+                  </Box>
+                  {s.description && (
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                      <InfoIcon sx={{ color: '#e0e0e0', mr: 1, mt: 0.25 }} />
+                      <Typography variant="body1" sx={{ color: '#e0e0e0', fontWeight: 500 }}>{s.description}</Typography>
+                    </Box>
+                  )}
+                </Box>
               </ListItem>
             ))}
           </List>
@@ -393,7 +432,7 @@ export default function ShowsCalendar() {
                   onClick={() => openDay(c.key)}
                   sx={{
                     p: 1.25,
-                    minHeight: {xs:100, sm:120},
+                    minHeight: {xs:120, sm:140},
                     borderRadius: 2,
                     cursor: 'pointer',
                     background: c.inMonth ? 'linear-gradient(135deg, #4b0082, #8a2be2)' : '#2a2a2a',
@@ -409,27 +448,41 @@ export default function ShowsCalendar() {
                     {isToday ? <Chip label="Today" size="small" color="primary" /> : null}
                   </Box>
 
-                  <Box sx={{ overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {dayShows.slice(0, 4).map((s) => (
+                  <Box sx={{ overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {dayShows.slice(0, 5).map((s) => (
                       <Tooltip key={s.id} title={`${s.title} @ ${s.venue || 'N/A'} - ${s.start.toLocaleString()}${s.description ? ' - ' + s.description : ''}`}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, p: 0.5, borderRadius: 0.5, background: 'rgba(255,255,255,0.1)', transition: 'background 0.3s ease' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#ffffff' }}>{s.title}</Typography>
-                            {isActive(s) ? <Chip label="LIVE" color="error" size="small" sx={{ ml: 0.5 }} /> : (s.start.getTime() - now.getTime()) < 86400000 ? <Chip label="Soon" color="warning" size="small" sx={{ ml: 0.5 }} /> : null}
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 0.5, borderRadius: 0.5, background: 'rgba(255,255,255,0.1)', transition: 'background 0.3s ease' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#ffffff', fontSize: 12 }}>{s.title}</Typography>
+                            {isActive(s) ? <Chip label="LIVE" color="error" size="small" /> : (s.start.getTime() - now.getTime()) < 86400000 ? <Chip label="Soon" color="warning" size="small" /> : null}
                           </Box>
-                          <Typography variant="caption" sx={{ color: '#e0e0e0' }}>{mounted ? s.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : s.start.toISOString().slice(11,16)}</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            {s.venue && <Typography variant="caption" sx={{ color: '#e0e0e0', fontSize: 10 }}>{s.venue}</Typography>}
+                            <Typography variant="caption" sx={{ color: '#e0e0e0', fontSize: 10 }}>{mounted ? s.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : s.start.toISOString().slice(11,16)}</Typography>
+                          </Box>
                         </Box>
                       </Tooltip>
                     ))}
-                    {dayShows.length > 4 ? <Typography variant="caption" sx={{ color: '#ffffff' }}>+{dayShows.length - 4} more</Typography> : null}
+                    {dayShows.length > 5 ? <Typography variant="caption" sx={{ color: '#ffffff' }}>+{dayShows.length - 5} more</Typography> : null}
                   </Box>
                 </Box>
               );
             })}
           </Box>
 
-          <Dialog open={dayDialogOpen} onClose={() => setDayDialogOpen(false)} fullWidth maxWidth="sm">
-            <DialogTitle>Shows on {selectedDay}</DialogTitle>
+          <Dialog
+            open={dayDialogOpen}
+            onClose={() => setDayDialogOpen(false)}
+            fullWidth
+            maxWidth="sm"
+            BackdropProps={{
+              sx: { backdropFilter: 'blur(10px)', backgroundColor: 'rgba(0,0,0,0.5)' }
+            }}
+            PaperProps={{
+              sx: { background: 'linear-gradient(135deg, #1e1e1e 0%, #3a3a3a 100%)', color: '#f5f5f5' }
+            }}
+          >
+            <DialogTitle sx={{ color: '#ffffff' }}>Shows on {selectedDay}</DialogTitle>
             <DialogContent>
               {selectedDay ? (
                 (() => {
@@ -455,17 +508,39 @@ export default function ShowsCalendar() {
                     );
                   }
                   return (
-                    <List>
+                    <List sx={{ p: 0 }}>
                       {dayItems.map((s) => (
                         <React.Fragment key={s.id}>
-                          <ListItem>
-                            <ListItemText
-                              primary={`${s.title}${s.venue ? ' @ ' + s.venue : ''}`}
-                              secondary={`${mounted ? s.start.toLocaleString() : s.start.toISOString()}${s.end ? (mounted ? ' — ' + s.end.toLocaleString() : ' — ' + s.end.toISOString()) : ''}${s.description ? ' — ' + s.description : ''}`}
-                            />
-                            {isActive(s) ? <Chip label="LIVE" color="error" size="small" /> : (s.start.getTime() - now.getTime()) < 86400000 ? <Chip label="Soon" color="warning" size="small" /> : null}
+                          <ListItem sx={{ borderBottom: 1, borderColor: 'divider', p: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 1, mb: 1 }}>
+                            <Box sx={{ width: '100%' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700, color: '#ffffff', fontSize: '1.25rem' }}>{s.title}</Typography>
+                                <Box>
+                                  {isActive(s) && <Chip label="LIVE" color="error" sx={{ mr: 1, fontWeight: 600 }} />}
+                                  {!isActive(s) && (s.start.getTime() - now.getTime()) < 86400000 && <Chip label="Soon" color="warning" sx={{ fontWeight: 600 }} />}
+                                </Box>
+                              </Box>
+                              {s.venue && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                  <LocationOnIcon sx={{ color: '#e0e0e0', mr: 1 }} />
+                                  <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 500 }}>{s.venue}</Typography>
+                                </Box>
+                              )}
+                              <Box sx={{ display: 'flex', alignItems: 'center', mb: s.description ? 1 : 0 }}>
+                                <ScheduleIcon sx={{ color: '#e0e0e0', mr: 1 }} />
+                                <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 500 }}>
+                                  {mounted ? s.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : s.start.toISOString().slice(11,16)}
+                                  {s.end && ` — ${mounted ? s.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : s.end.toISOString().slice(11,16)}`}
+                                </Typography>
+                              </Box>
+                              {s.description && (
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                                  <InfoIcon sx={{ color: '#e0e0e0', mr: 1, mt: 0.25 }} />
+                                  <Typography variant="body1" sx={{ color: '#e0e0e0', fontWeight: 500 }}>{s.description}</Typography>
+                                </Box>
+                              )}
+                            </Box>
                           </ListItem>
-                          <Divider />
                         </React.Fragment>
                       ))}
                     </List>

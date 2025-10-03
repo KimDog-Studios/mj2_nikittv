@@ -2,12 +2,22 @@
 import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import FormHelperText from '@mui/material/FormHelperText';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
+import MessageOutlinedIcon from '@mui/icons-material/MessageOutlined';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -16,6 +26,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
+import Fade from '@mui/material/Fade';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db, rtdb } from './firebaseClient';
 import { ref, push, set, get } from 'firebase/database';
@@ -25,6 +36,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import dayjs, { Dayjs } from 'dayjs';
+import { useTheme } from '@mui/material/styles';
+
+const locations = ['Bridgend', 'Pontycymer', 'Sarn', 'Maesteg', 'Other'];
 
 function parseTime(value: any): Date | null {
   if (!value) return null;
@@ -49,6 +63,7 @@ interface FormState {
   email: string;
   phone: string;
   location: string;
+  venue: string;
   date: Dayjs | null;
   time: Dayjs | null;
   message: string;
@@ -59,8 +74,10 @@ interface Props {
   onLocationChange?: (loc: string) => void;
 }
 
+
 function ManageBookings({ selectedLocation, onLocationChange }: Props) {
-  const [form, setForm] = useState<FormState>({ name: '', email: '', phone: '', location: selectedLocation ?? '', date: null, message: '', time: null });
+  const theme = useTheme();
+  const [form, setForm] = useState<FormState>({ name: '', email: '', phone: '', location: selectedLocation ?? '', venue: '', date: null, message: '', time: null });
   const [openSnack, setOpenSnack] = useState(false);
   const [snackMsg, setSnackMsg] = useState('');
   const [snackSeverity, setSnackSeverity] = useState<'success' | 'error'>('success');
@@ -78,20 +95,25 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
       e.email = 'Email is required';
     } else {
       // simple email regex
-      const re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(".+"))@(([^<>()[\]\\.,;:\s@\"]+\.)+[^<>()[\]\\.,;:\s@\"]{2,})$/i;
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!re.test(vals.email)) e.email = 'Enter a valid email';
     }
-    if (vals.phone && vals.phone.trim()) {
+    if (!vals.phone.trim()) {
+      e.phone = 'Phone is required';
+    } else {
       // very permissive phone check (digits, spaces, +, -)
       const phoneRe = /^[0-9+\-()\s]+$/;
       if (!phoneRe.test(vals.phone)) e.phone = 'Enter a valid phone number';
     }
+    if (!vals.location.trim()) e.location = 'Location is required';
+    if (!vals.venue.trim()) e.venue = 'Venue is required';
     if (!vals.date) {
       e.date = 'Date is required';
-    } else if (vals.date.isBefore(dayjs(), 'day')) {
-      e.date = 'Date must be in the future';
     }
-    // time is optional
+    if (!vals.time) {
+      e.time = 'Time is required';
+    }
+    if (!vals.message.trim()) e.message = 'Message is required';
     return e;
   };
 
@@ -114,142 +136,21 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
 
     setSubmitting(true);
     try {
-  // First: block if this customer already has an active/upcoming booking
-  // We'll consider a booking active/upcoming if its end time is in the future.
-  const now = new Date();
-  const DEFAULT_DURATION_MS = 1000 * 60 * 60 * 2; // 2 hours default
-  const isoDate = normalizeDateToISO(form.date);
-  if (form.name && form.name.trim()) {
-    const nameLower = form.name.trim().toLowerCase();
-    if (rtdb) {
-      const snapshotAll = await get(ref(rtdb, 'bookings'));
-      const valAll = (snapshotAll && (snapshotAll as any).val && (snapshotAll as any).val()) || {};
-      const entries: any[] = Object.values(valAll);
-      for (const b of entries) {
-        if (!b || !b.name) continue;
-        if ((b.name || '').toString().trim().toLowerCase() !== nameLower) continue;
-        // compute normalized date for existing booking
-        const bIso = normalizeDateToISO(b.date || '');
-        // If both bookings have a date and they match => block
-        if (isoDate && bIso && isoDate === bIso) {
-          // if both provide times, check time equality/overlap
-          if (form.time && b.time) {
-            if (form.time.format('HH:mm') === b.time) {
-              throw new Error('You already have a booking with the same name and time on that date. Please choose another date or time.');
-            }
-            // optional: overlap logic could go here; for now, equal times are blocked
-          } else {
-            // either booking is full-day or one has no time — treat as conflict
-            throw new Error('You already have a booking on that date. Please wait until it is completed before requesting another.');
-          }
-        }
-        // If no date provided (or dates don't match), fallback to blocking active/upcoming bookings
-        let start = null as Date | null;
-        if (bIso) {
-          const [yy, mm, dd] = bIso.split('-').map(Number);
-          if (b.time) {
-            const [hh, min] = (b.time || '00:00').split(':').map(Number);
-            start = new Date(yy, mm - 1, dd, hh || 0, min || 0, 0);
-          } else {
-            start = new Date(yy, mm - 1, dd, 0, 0, 0);
-          }
-        } else if (b.createdAt) {
-          if (typeof b.createdAt === 'number') start = new Date(b.createdAt);
-          else if (b.createdAt?.toDate) start = b.createdAt.toDate();
-        }
-        const end = start ? (b.end ? parseTime(b.end) ?? new Date(start.getTime() + DEFAULT_DURATION_MS) : new Date(start.getTime() + DEFAULT_DURATION_MS)) : null;
-        if (end && end.getTime() > now.getTime()) {
-          throw new Error('You already have an active or upcoming booking. Please wait until that booking is completed before requesting another.');
-        }
+      const isoDate = normalizeDateToISO(form.date);
+      // Simplified submission without conflict check for now
+      const { date, time, ...rest } = form;
+      const payload = { ...rest, date: isoDate, time: form.time?.format('HH:mm') } as any;
+      if (rtdb) {
+        // write to Realtime Database under /bookings
+        const bookingsRef = ref(rtdb, 'bookings');
+        const newRef = push(bookingsRef);
+        await set(newRef, { ...payload, createdAt: Date.now() });
+      } else {
+        // send to Firestore
+        await addDoc(collection(db, 'bookings'), { ...payload, createdAt: serverTimestamp() });
       }
-    } else {
-      // Firestore: try server-side equality query first, then fallback to client-side case-insensitive scan if nothing returned
-      try {
-        const qByName = query(collection(db, 'bookings'), where('name', '==', form.name));
-        const snapByName = await getDocs(qByName);
-        let docsToCheck: any[] = [];
-        if (!snapByName.empty) {
-          docsToCheck = snapByName.docs.map(d => ({ id: d.id, ...d.data() }));
-        } else {
-          // fallback: fetch all bookings and filter case-insensitively (small apps only)
-          const allSnap = await getDocs(collection(db, 'bookings'));
-          docsToCheck = allSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((b: any) => (b.name || '').toString().trim().toLowerCase() === nameLower);
-        }
-        for (const docB of docsToCheck) {
-          const b: any = docB;
-          if (!b || !b.name) continue;
-          if ((b.name || '').toString().trim().toLowerCase() !== nameLower) continue;
-          const bIso = normalizeDateToISO(b.date || '');
-          if (isoDate && bIso && isoDate === bIso) {
-            if (form.time && b.time) {
-              if (form.time.format('HH:mm') === b.time) {
-                throw new Error('You already have a booking with the same name and time on that date. Please choose another date or time.');
-              }
-            } else {
-              throw new Error('You already have a booking on that date. Please wait until it is completed before requesting another.');
-            }
-          }
-          // fallback: block active/upcoming bookings
-          let start: Date | null = null;
-          if (bIso) {
-            const [yy, mm, dd] = bIso.split('-').map(Number);
-            if (b.time) {
-              const [hh, min] = (b.time || '00:00').split(':').map(Number);
-              start = new Date(yy, mm - 1, dd, hh || 0, min || 0, 0);
-            } else {
-              start = new Date(yy, mm - 1, dd, 0, 0, 0);
-            }
-          } else if (b.createdAt) {
-            if (typeof b.createdAt === 'number') start = new Date(b.createdAt);
-            else if (b.createdAt?.toDate) start = b.createdAt.toDate();
-          }
-          const end = start ? (b.end ? parseTime(b.end) ?? new Date(start.getTime() + DEFAULT_DURATION_MS) : new Date(start.getTime() + DEFAULT_DURATION_MS)) : null;
-          if (end && end.getTime() > now.getTime()) {
-            throw new Error('You already have an active or upcoming booking. Please wait until that booking is completed before requesting another.');
-          }
-        }
-      } catch (err) {
-        // allow other checks to proceed if this query fails silently
-        console.warn('Name-based booking check failed', err);
-      }
-    }
-  }
-  // If user provided a date+time, check for conflicts (same date and same time)
-      
-      if (isoDate && form.time) {
-        if (rtdb) {
-          if (rtdb) {
-            const snapshot = await get(ref(rtdb, 'bookings'));
-            const val = (snapshot && (snapshot as any).val && (snapshot as any).val()) || {};
-            const conflict = Object.values(val).some((b: any) => {
-              const bDate = b.date ? (b.date.indexOf('-') > -1 ? b.date.split('T')[0] : (b.date.indexOf('/') > -1 ? (() => { const [d,m,y]=b.date.split('/'); return `${y}-${m}-${d}` })() : b.date)) : '';
-              return bDate === isoDate && (b.time || '') === (form.time ? form.time.format('HH:mm') : '');
-            });
-            if (conflict) {
-              throw new Error('Preferred time already taken on that date. Please choose another time.');
-            }
-          }
-        } else {
-          const q = query(collection(db, 'bookings'), where('date', '==', isoDate), where('time', '==', form.time.format('HH:mm')));
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            throw new Error('Preferred time already taken on that date. Please choose another time.');
-          }
-        }
-      }
-        const { date, time, ...rest } = form;
-        const payload = { ...rest, date: isoDate, time: form.time?.format('HH:mm') } as any;
-        if (rtdb) {
-          // write to Realtime Database under /bookings
-          const bookingsRef = ref(rtdb, 'bookings');
-          const newRef = push(bookingsRef);
-          await set(newRef, { ...payload, createdAt: Date.now() });
-        } else {
-          // send to Firestore
-          await addDoc(collection(db, 'bookings'), { ...payload, createdAt: serverTimestamp() });
-        }
-  setSubmissionError(null);
-  setOpenDialog(true);
+      setSubmissionError(null);
+      setOpenDialog(true);
     } catch (err: any) {
       console.error('Booking submission error:', err);
       const message = err?.message ? `Submission failed: ${err.message}` : 'Submission failed — check console for details.';
@@ -270,86 +171,380 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
   }, [selectedLocation]);
 
   // When user edits the location field manually, notify parent if provided
-  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleLocationChange = (e: SelectChangeEvent<string>) => {
     const val = e.target.value;
     setForm(prev => ({ ...prev, location: val }));
     if (onLocationChange) onLocationChange(val);
   };
 
-  return (
-    <Box sx={{
-      bgcolor: '#1f2937',
-      color: '#f9fafb',
-      p: { xs: 3, sm: 4 },
-      borderRadius: 4,
-      border: '1px solid rgba(255,255,255,0.1)',
-      boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-      maxWidth: 800,
-      mx: 'auto',
-      mt: 6,
-      background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
-      transition: 'all 0.3s ease-in-out',
+  const commonFieldSx = {
+    '& .MuiOutlinedInput-root': {
+      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+      borderRadius: 3,
+      minHeight: 60,
+      border: `1px solid ${theme.palette.divider}`,
+      transition: 'all 0.3s ease',
       '&:hover': {
-        boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+        borderColor: theme.palette.primary.main,
+        transform: 'translateY(-2px)',
+        boxShadow: `0 4px 20px ${theme.palette.primary.main}33`
       },
-    }}>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 2, color: '#f9fafb', textAlign: 'center' }}>Book Your Session</Typography>
-      <Typography variant="body1" sx={{ color: '#d1d5db', mb: 3, textAlign: 'center', lineHeight: 1.6 }}>Please provide your details below. We&apos;ll securely store your booking and contact you to confirm.</Typography>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Box component="form" onSubmit={handleSubmit} noValidate autoComplete="off" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 3 }}>
-  <TextField label="Full name" placeholder="e.g. John Smith" variant="outlined" value={form.name} onChange={handleChange('name')} InputProps={{ startAdornment: (<InputAdornment position="start"><PersonOutlineIcon sx={{ color: '#9ca3af' }} /></InputAdornment>) }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} required error={!!errors.name} helperText={errors.name} />
-  <TextField label="Email" placeholder="you@example.com" variant="outlined" value={form.email} onChange={handleChange('email')} InputProps={{ startAdornment: (<InputAdornment position="start"><EmailOutlinedIcon sx={{ color: '#9ca3af' }} /></InputAdornment>) }} helperText={errors.email ?? 'We will contact you to confirm the booking'} sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} required error={!!errors.email} />
-  <TextField label="Phone" placeholder="01234 567890" variant="outlined" value={form.phone} onChange={handleChange('phone')} InputProps={{ startAdornment: (<InputAdornment position="start"><PhoneOutlinedIcon sx={{ color: '#9ca3af' }} /></InputAdornment>) }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} error={!!errors.phone} helperText={errors.phone} />
-        <TextField label="Location" placeholder="Town or venue" variant="outlined" value={form.location} onChange={handleLocationChange} sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} />
-  <DatePicker label="Preferred Date" value={form.date} onChange={(newValue) => setForm(prev => ({ ...prev, date: newValue }))} shouldDisableDate={(date) => date.isBefore(dayjs(), 'day')} slotProps={{ textField: { sx: { '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }, error: !!errors.date, helperText: errors.date } }} />
-  <TimePicker label="Preferred Time" value={form.time} onChange={(newValue) => setForm(prev => ({ ...prev, time: newValue }))} slotProps={{ textField: { sx: { '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }, error: !!errors.time, helperText: errors.time ?? 'Optional — use 24-hour format (HH:MM)' } }} />
-        <TextField label="Message" variant="outlined" multiline rows={4} fullWidth value={form.message} onChange={handleChange('message')} sx={{ gridColumn: '1 / -1', '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, gridColumn: '1 / -1', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <Link href="/pages/contact-us" passHref>
-            <Button variant="text" sx={{ color: '#d1d5db', textTransform: 'none', '&:hover': { color: '#f9fafb', bgcolor: 'rgba(255,255,255,0.1)' } }}>
-              Having Issues? Contact Us
-            </Button>
-          </Link>
-          <Button type="submit" disabled={submitting} variant="contained" sx={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', px: 5, py: 1.5, borderRadius: 3, color: '#fff', fontWeight: 600, width: { xs: '100%', sm: 'auto' }, opacity: submitting ? 0.7 : 1, transition: 'all 0.2s ease-in-out', '&:hover': { transform: submitting ? 'none' : 'translateY(-1px)', boxShadow: submitting ? 'none' : '0 10px 25px rgba(59, 130, 246, 0.3)' }, '&:active': { transform: 'translateY(0)' } }}>{submitting ? <> <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} /> Submitting... </> : 'Submit Booking'}</Button>
-        </Box>
+      '&.Mui-focused': {
+        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+        borderColor: theme.palette.primary.main,
+        transform: 'translateY(-4px)',
+        boxShadow: `0 8px 30px ${theme.palette.primary.main}4D`
+      },
+      '& .MuiOutlinedInput-input': { color: theme.palette.text.primary },
+      '& .MuiInputLabel-root': { color: theme.palette.text.secondary },
+      '& .MuiOutlinedInput-notchedOutline': { border: 'none' }
+    },
+    '& .MuiFormHelperText-root': { color: theme.palette.text.secondary, fontSize: '0.75rem' },
+    '& .MuiFormLabel-root.Mui-focused': { color: theme.palette.primary.main }
+  };
+
+  return (
+    <Fade in={true} timeout={800}>
+      <Box
+        sx={{
+          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+          color: theme.palette.text.primary,
+          p: { xs: 3, sm: 4 },
+          borderRadius: 4,
+          border: `1px solid ${theme.palette.divider}`,
+          boxShadow: `0 20px 40px ${theme.palette.common.black}80`,
+          maxWidth: 600,
+          mx: 'auto',
+          mt: { xs: 4, sm: 6 },
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+      <Box>
+        <Typography variant="h4" sx={{
+          fontWeight: 700,
+          mb: 2,
+          color: theme.palette.text.primary,
+          textAlign: 'center',
+          fontSize: { xs: '1.75rem', sm: '2.125rem' },
+          background: `linear-gradient(45deg, ${theme.palette.primary.main}, #ff6b6b)`,
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text'
+        }}>
+          Book Your Session
+        </Typography>
+        <Typography variant="body1" sx={{
+          color: theme.palette.text.secondary,
+          mb: 4,
+          textAlign: 'center',
+          lineHeight: 1.6
+        }}>
+          Fill out the form below and we'll get back to you to confirm your booking.
+        </Typography>
       </Box>
-      </LocalizationProvider>
-      {/* Inline error panel below the form */}
-      {submissionError || Object.keys(errors).length ? (
-        <Box sx={{ mt: 2, maxWidth: 720, mx: 'auto', color: '#fff' }}>
-          <Box sx={{ bgcolor: '#451a1a', color: '#fca5a5', p: 3, borderRadius: 3, border: '1px solid #7f1d1d' }} role="alert">
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>There are problems with your submission</Typography>
-            {submissionError ? <Typography variant="body2" sx={{ mb: 1 }}>{submissionError}</Typography> : null}
-            {Object.keys(errors).length ? (
-              <Box component="ul" sx={{ ml: 2, mb: 0 }}>
-                {Object.entries(errors).map(([k, v]) => (
-                  <li key={k}><Typography variant="body2">{k}: {v}</Typography></li>
-                ))}
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <Box component="form" onSubmit={handleSubmit} noValidate autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box>
+              <TextField
+                fullWidth
+                label="Full Name"
+                placeholder="John Doe"
+                variant="outlined"
+                value={form.name}
+                onChange={handleChange('name')}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonOutlineIcon sx={{ color: theme.palette.text.secondary }} />
+                    </InputAdornment>
+                  )
+                }}
+                sx={commonFieldSx}
+                required
+                error={!!errors.name}
+                helperText={errors.name}
+              />
+            </Box>
+            <Box>
+              <TextField
+                fullWidth
+                label="Email"
+                placeholder="john@example.com"
+                variant="outlined"
+                value={form.email}
+                onChange={handleChange('email')}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailOutlinedIcon sx={{ color: theme.palette.text.secondary }} />
+                    </InputAdornment>
+                  )
+                }}
+                sx={commonFieldSx}
+                required
+                error={!!errors.email}
+                helperText={errors.email || 'We\'ll contact you to confirm'}
+              />
+            </Box>
+            <Box>
+              <TextField
+                fullWidth
+                label="Phone"
+                placeholder="01234 567890"
+                variant="outlined"
+                value={form.phone}
+                onChange={handleChange('phone')}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PhoneOutlinedIcon sx={{ color: theme.palette.text.secondary }} />
+                    </InputAdornment>
+                  )
+                }}
+                sx={commonFieldSx}
+                required
+                error={!!errors.phone}
+                helperText={errors.phone}
+              />
+            </Box>
+            <Box>
+              <FormControl fullWidth variant="outlined" error={!!errors.location} sx={commonFieldSx}>
+                <InputLabel id="location-label">Location</InputLabel>
+                <Select
+                  labelId="location-label"
+                  value={form.location}
+                  onChange={handleLocationChange}
+                  label="Location"
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <LocationOnOutlinedIcon sx={{ color: theme.palette.text.secondary }} />
+                    </InputAdornment>
+                  }
+                  sx={{
+                    '& .MuiSelect-select': { color: theme.palette.text.primary },
+                    '& .MuiOutlinedInput-notchedOutline': { border: 'none' }
+                  }}
+                >
+                  {locations.map(loc => (
+                    <MenuItem key={loc} value={loc} sx={{ color: theme.palette.text.primary, '&:hover': { bgcolor: theme.palette.action.hover } }}>
+                      {loc}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>{errors.location || 'Select your preferred location'}</FormHelperText>
+              </FormControl>
+            </Box>
+            <Box>
+              <TextField
+                fullWidth
+                label="Venue"
+                placeholder="Venue or address details"
+                variant="outlined"
+                value={form.venue}
+                onChange={handleChange('venue')}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BusinessOutlinedIcon sx={{ color: theme.palette.text.secondary }} />
+                    </InputAdornment>
+                  )
+                }}
+                sx={commonFieldSx}
+                required
+                error={!!errors.venue}
+                helperText={errors.venue || 'Specific venue or address'}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <Box sx={{ flex: 1 }}>
+                <DatePicker
+                  label="Preferred Date"
+                  value={form.date}
+                  onChange={(newValue) => setForm(prev => ({ ...prev, date: newValue }))}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      sx: commonFieldSx,
+                      error: !!errors.date,
+                      helperText: errors.date,
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <EventOutlinedIcon sx={{ color: theme.palette.text.secondary }} />
+                          </InputAdornment>
+                        )
+                      }
+                    }
+                  }}
+                />
               </Box>
-            ) : null}
+              <Box sx={{ flex: 1 }}>
+                <TimePicker
+                  label="Preferred Time"
+                  value={form.time}
+                  onChange={(newValue) => setForm(prev => ({ ...prev, time: newValue }))}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      sx: commonFieldSx,
+                      error: !!errors.time,
+                      helperText: errors.time || 'Use 24-hour format',
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <AccessTimeOutlinedIcon sx={{ color: theme.palette.text.secondary }} />
+                          </InputAdornment>
+                        )
+                      }
+                    }
+                  }}
+                />
+              </Box>
+            </Box>
+            <Box>
+              <TextField
+                fullWidth
+                label="Message"
+                placeholder="Any additional details..."
+                variant="outlined"
+                multiline
+                rows={4}
+                value={form.message}
+                onChange={handleChange('message')}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MessageOutlinedIcon sx={{ color: 'var(--muted)', alignSelf: 'flex-start', mt: 1 }} />
+                    </InputAdornment>
+                  )
+                }}
+                sx={commonFieldSx}
+                required
+                error={!!errors.message}
+                helperText={errors.message}
+              />
+            </Box>
+            <Box
+              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}
+            >
+              <Link href="/pages/contact-us">
+                <Button
+                  variant="text"
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    textTransform: 'none',
+                    '&:hover': {
+                      color: theme.palette.primary.main,
+                      bgcolor: theme.palette.action.hover
+                    }
+                  }}
+                >
+                  Need Help? Contact Us
+                </Button>
+              </Link>
+              <Box>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  variant="contained"
+                  sx={{
+                    background: 'linear-gradient(135deg, var(--accent) 0%, #ff6b6b 100%)',
+                    px: 6,
+                    py: 2,
+                    borderRadius: 3,
+                    color: '#fff',
+                    fontWeight: 600,
+                    width: { xs: '100%', sm: 'auto' },
+                    opacity: submitting ? 0.7 : 1,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #e0143f 0%, #ff5555 100%)',
+                      boxShadow: '0 10px 30px rgba(255, 23, 68, 0.4)',
+                      transform: submitting ? 'none' : 'translateY(-2px)'
+                    },
+                    '&:disabled': {
+                      background: theme.palette.action.disabledBackground
+                    }
+                  }}
+                >
+                  {submitting ? (
+                    <>
+                      <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Booking'
+                  )}
+                </Button>
+              </Box>
+            </Box>
           </Box>
-        </Box>
-      ) : null}
-      <Snackbar open={openSnack} autoHideDuration={6000} onClose={() => setOpenSnack(false)}>
-         <Alert onClose={() => setOpenSnack(false)} severity={snackSeverity} sx={{ width: '100%' }}>
-           {snackMsg}
-         </Alert>
-       </Snackbar>
-       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} aria-labelledby="success-dialog-title" aria-describedby="success-dialog-description">
-         <DialogTitle id="success-dialog-title">Booking Submitted Successfully</DialogTitle>
-         <DialogContent>
-           <DialogContentText id="success-dialog-description">
-             Your booking has been submitted. We will contact you soon to confirm.
-           </DialogContentText>
-         </DialogContent>
-         <DialogActions>
-           <Button onClick={() => { setOpenDialog(false); setForm({ name: '', email: '', phone: '', location: '', date: null, message: '', time: null }); setErrors({}); }} color="primary" autoFocus>
-             OK
-           </Button>
-         </DialogActions>
-       </Dialog>
-     </Box>
-  );
+        </LocalizationProvider>
+        {(submissionError || Object.keys(errors).length > 0) && (
+          <Box sx={{ mt: 3, maxWidth: 600, mx: 'auto' }}>
+            <Box sx={{
+              bgcolor: theme.palette.error.main + '1A', // 10% alpha
+              color: theme.palette.error.main,
+              p: 3,
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.error.main}4D`, // 30% alpha
+              backdropFilter: 'blur(10px)'
+            }} role="alert">
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                Please check your input
+              </Typography>
+              {submissionError && (
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  {submissionError}
+                </Typography>
+              )}
+              {Object.keys(errors).length > 0 && (
+                <Box component="ul" sx={{ ml: 2, mb: 0 }}>
+                  {Object.entries(errors).map(([k, v]) => (
+                    <li key={k}>
+                      <Typography variant="body2">{v}</Typography>
+                    </li>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </Box>
+        )}
+        <Snackbar
+          open={openSnack}
+          autoHideDuration={6000}
+          onClose={() => setOpenSnack(false)}
+        >
+          <Alert onClose={() => setOpenSnack(false)} severity={snackSeverity} sx={{ width: '100%' }}>
+            {snackMsg}
+          </Alert>
+        </Snackbar>
+        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} aria-labelledby="success-dialog-title" aria-describedby="success-dialog-description">
+          <DialogTitle id="success-dialog-title">Booking Submitted Successfully</DialogTitle>
+          <DialogContent>
+            <DialogContentText id="success-dialog-description">
+              Your booking has been submitted. We'll contact you soon to confirm.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setOpenDialog(false);
+                setForm({ name: '', email: '', phone: '', location: '', venue: '', date: null, message: '', time: null });
+                setErrors({});
+              }}
+              color="primary"
+              autoFocus
+            >
+              OK
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </Fade>
+   );
 }
 
 export default ManageBookings

@@ -5,6 +5,7 @@ import "./globals.css";
 import NavBarClient from "../Components/NavBarClient";
 import Footer from "../Components/Footer";
 import { Analytics } from "@vercel/analytics/next";
+import ThemeProvider from "../Components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,12 +32,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-  <NavBarClient />
-        <main style={{ paddingTop: 'var(--navbar-height)', background: 'var(--background)', minHeight: '100vh', color: 'var(--foreground)' }}>
-          {children}
-        </main>
-        <Footer />
-        <Analytics />
+        <ThemeProvider>
+          <NavBarClient />
+          <main style={{ paddingTop: 'var(--navbar-height)', minHeight: '100vh' }}>
+            {children}
+          </main>
+          <Footer />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );
