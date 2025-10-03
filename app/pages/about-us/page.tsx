@@ -15,6 +15,7 @@ import MusicNoteIcon from '@mui/icons-material/MusicNote';
 const members = [
   { name: 'Liam Paterson', role: 'Manager/Lead Dancer', bio: 'Founded the company and is the Main Dancer.', avatar: 'https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pictures/NikiAvatar.png' },
   { name: 'KimDog', role: 'Social Media Manager', bio: 'Handles all the Social Media and Website side of things.', avatar: 'https://raw.githubusercontent.com/KimDog-Studios/KimDog-Studios/main/KimDog.png' },
+  { name: 'Joel Girth', role: 'Technician', bio: 'Fixes everything to do with Running and maintaining the shows.', avatar: 'https://raw.githubusercontent.com/KimDog-Studios/KimDog-Studios/main/KimDog.png' },
 ];
 
 const gallery = [

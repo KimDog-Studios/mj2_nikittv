@@ -116,26 +116,6 @@ function NavBar() {
     return () => clearTimeout(timeoutId);
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const active = document.activeElement;
-      const isSearchFocused = searchRef.current && active === searchRef.current;
-      // guard e.key in case it's undefined (some events may not have it)
-      const key = typeof e.key === 'string' ? e.key.toLowerCase() : null;
-      if (
-        key === 'f' &&
-        !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey &&
-        !isSearchFocused
-      ) {
-        if (searchRef.current && typeof searchRef.current.focus === 'function') {
-          searchRef.current.focus();
-          e.preventDefault();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   return (
     <AppBar position="sticky" elevation={6} sx={{
@@ -333,7 +313,6 @@ function NavBar() {
                 inputProps={{ 'aria-label': 'search' }}
                 inputRef={searchRef}
               />
-              <Box sx={{ ml: 1, color: '#bbb', fontSize: '1rem', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', px: 1.7, py: 0.8, borderRadius: 2.5, border: '1.5px solid #444', display: 'flex', alignItems: 'center', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.10)', letterSpacing: 1 }}>F</Box>
             </Search>
           </Box>
         </Box>
