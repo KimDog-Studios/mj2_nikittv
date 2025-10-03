@@ -9,6 +9,7 @@ import Paper from '@mui/material/Paper';
 import ImageList from '@mui/material/ImageList';
 import ImageListItem from '@mui/material/ImageListItem';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const members = [
   { name: 'Alex "MJ" Turner', role: 'Lead Performer', bio: 'Stage presence and choreography inspired by the King of Pop.', avatar: '/Pic1.png' },
@@ -35,7 +36,7 @@ export default function AboutPage() {
             <Paper elevation={6} sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 2 }}>
               <Typography variant="h5" sx={{ fontWeight: 800, color: '#fff', mb: 1 }}>Our Mission</Typography>
               <Typography variant="body1" sx={{ color: '#ccc', mb: 2, lineHeight: 1.6 }}>
-                MJ2 Tribute is made by lifelong fans and performers who want to bring the experience of Michael Jackson's timeless music to fans old and new. We combine live vocals, authentic choreography and a tight band to recreate the energy of the classics while keeping the performances fresh.
+                MJ2 Tribute is made by lifelong fans and performers who want to bring the experience of the timeless music of Michael Jackson to fans old and new. We combine live vocals, authentic choreography and a tight band to recreate the energy of the classics while keeping the performances fresh.
               </Typography>
               <Typography variant="body2" sx={{ color: '#aaa' }}>
                 We treat the music with care and put audience safety and enjoyment first. Our team rehearses extensively and adapts setlists to suit event types — from intimate community halls to club nights and festival stages.
@@ -47,7 +48,7 @@ export default function AboutPage() {
             <ImageList cols={1} gap={8} sx={{ borderRadius: 2, overflow: 'hidden' }}>
               {gallery.map((src, i) => (
                 <ImageListItem key={i}>
-                  <img src={src} alt={`gallery-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+                  <Image src={src} alt={`gallery-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} width={800} height={450} />
                 </ImageListItem>
               ))}
             </ImageList>

@@ -37,8 +37,8 @@ export default function AdminLogin() {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/manage_booking');
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'message' in err ? (err as any).message : 'Sign-in failed';
-      setError(msg);
+      if (err instanceof Error) setError(err.message);
+      else setError(String(err ?? 'Sign-in failed'));
     } finally {
       setLoading(false);
     }
