@@ -75,7 +75,7 @@ export default function AboutPage() {
           <Paper elevation={6} sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap', bgcolor: 'rgba(255,255,255,0.02)' }}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 800 }}>Book us for your next event</Typography>
-              <Typography variant="body2" sx={{ color: '#ccc' }}>We perform full tribute shows, themed sets and private bookings. Tell us about your event and we’ll respond promptly.</Typography>
+              <Typography variant="body2" sx={{ color: '#ccc' }}>We perform full tribute shows, themed sets and private bookings. Tell us about your event and we will respond promptly.</Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <Link href="/booking">

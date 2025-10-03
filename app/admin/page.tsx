@@ -10,7 +10,6 @@ import Typography from '@mui/material/Typography';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Stack from '@mui/material/Stack';
 import InputAdornment from '@mui/material/InputAdornment';
-import NavBar from '@/Components/NavBar';
 import { auth } from '@/Components/firebaseClient';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 
@@ -37,8 +36,9 @@ export default function AdminLogin() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/manage_booking');
-    } catch (err: any) {
-      setError(err?.message ?? 'Sign-in failed');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err ? (err as any).message : 'Sign-in failed';
+      setError(msg);
     } finally {
       setLoading(false);
     }
