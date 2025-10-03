@@ -29,7 +29,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <NavBar />
+        <main style={{ paddingTop: 'var(--navbar-height)', background: 'var(--background)', minHeight: '100vh', color: 'var(--foreground)' }}>
+          {children}
+        </main>
       </body>
     </html>
   );

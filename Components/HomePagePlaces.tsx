@@ -34,7 +34,14 @@ const places = [
   },
 ];
 
-function HomePagePlaces() {
+interface Props {
+  selectedLocation?: string;
+  onToggleLocation?: (placeName: string) => void;
+}
+
+function HomePagePlaces({ selectedLocation, onToggleLocation }: Props) {
+  // pulse effect will be handled by CSS utility .place-pulse applied to the wrapper in Add state
+
   return (
     <Box sx={{
       width: '100%',
@@ -142,6 +149,18 @@ function HomePagePlaces() {
             <CardContent sx={{ px: 2, py: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, fontSize: '1.08em', color: '#fff' }}>{place.name}</Typography>
               <Typography variant="body2" sx={{ fontWeight: 600, color: '#38ef7d', fontSize: '1em' }}>{place.price}</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <div className={`place-add-btn ${selectedLocation === place.name ? '' : 'place-pulse'}`}>
+                  <button
+                    onClick={() => onToggleLocation && onToggleLocation(place.name)}
+                    className={
+                      `relative z-20 font-semibold px-4 py-2 transition-transform rounded-[8px] ${selectedLocation === place.name ? 'bg-red-700 text-white hover:scale-102' : 'bg-gradient-to-r from-[#232526] to-[#444] text-white hover:scale-102'}`
+                    }
+                  >
+                    {selectedLocation === place.name ? 'Remove' : 'Add'}
+                  </button>
+                </div>
+              </Box>
             </CardContent>
           </Card>
         ))}

@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Tooltip from '@mui/material/Tooltip';
 
 const openingTimes = [
   { day: 'Monday', open: '09:00', close: '16:00' },
@@ -43,23 +45,33 @@ function HomePageOpeningTimes() {
   type OpeningTime = { day: string; open: string; close: string };
 type OpenStatus = { status: 'closed' | 'before' | 'open' | 'after'; message: string };
 
+function pad2(n: number) { return String(n).padStart(2, '0'); }
+
+function secsUntil(targetH: number, targetM: number, now: Date) {
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetH, targetM, 0);
+  return Math.max(0, Math.floor((target.getTime() - now.getTime()) / 1000));
+}
+
+function formatHMS(totalSeconds: number) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h ? h + 'h ' : ''}${pad2(m)}m ${pad2(s)}s`;
+}
+
 function getOpenStatus(today: OpeningTime, now: Date): OpenStatus {
   if (today.open === 'Closed') return { status: 'closed', message: 'Closed today' };
   const [openH, openM] = today.open.split(':').map(Number);
   const [closeH, closeM] = today.close.split(':').map(Number);
-  const nowMins = now.getHours() * 60 + now.getMinutes();
-  const openMins = openH * 60 + openM;
-  const closeMins = closeH * 60 + closeM;
-  if (nowMins < openMins) {
-    const mins = openMins - nowMins;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return { status: 'before', message: `Opens in ${h ? h + 'h ' : ''}${m}m` };
-  } else if (nowMins >= openMins && nowMins < closeMins) {
-    const mins = closeMins - nowMins;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return { status: 'open', message: `Open Now, closes in ${h ? h + 'h ' : ''}${m}m` };
+  const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  const openSecs = openH * 3600 + openM * 60;
+  const closeSecs = closeH * 3600 + closeM * 60;
+  if (nowSecs < openSecs) {
+    const secs = openSecs - nowSecs;
+    return { status: 'before', message: `Opens in ${formatHMS(secs)}` };
+  } else if (nowSecs >= openSecs && nowSecs < closeSecs) {
+    const secs = closeSecs - nowSecs;
+    return { status: 'open', message: `Open Now, closes in ${formatHMS(secs)}` };
   } else {
     return { status: 'after', message: 'Closed Today' };
   }
@@ -90,16 +102,7 @@ function getOpenStatus(today: OpeningTime, now: Date): OpenStatus {
           marginLeft: '6px',
         }}>📅</span>
       </Typography>
-      <style>{`
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
-        }
-        @keyframes blinkColon {
-          0%, 49% { opacity: 1; }
-          50%, 100% { opacity: 0; }
-        }
-      `}</style>
+      {/* keyframes moved to global CSS to avoid hydration mismatches */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, width: '100%' }}>
         <Typography variant="subtitle1" sx={{ color: '#38ef7d', fontWeight: 700, fontSize: '1.15em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
           {mounted && (
@@ -123,8 +126,8 @@ function getOpenStatus(today: OpeningTime, now: Date): OpenStatus {
             </>
           )}
         </Typography>
-        <Typography variant="body2" sx={{ color: openStatus.status === 'open' ? '#38ef7d' : '#ff1744', fontWeight: 700, fontSize: '1.08em', mt: 0.5 }}>
-          {openStatus.message}
+        <Typography variant="body2" sx={{ color: mounted && openStatus.status === 'open' ? '#38ef7d' : '#ff1744', fontWeight: 700, fontSize: '1.08em', mt: 0.5 }}>
+          {mounted ? openStatus.message : 'Calculating availability...'}
         </Typography>
       </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, width: '100%', mt: 1 }}>
@@ -136,9 +139,9 @@ function getOpenStatus(today: OpeningTime, now: Date): OpenStatus {
             px: 2,
             py: 1,
             borderRadius: 2,
-            bgcolor: todayIdx === idx ? 'rgba(255,23,68,0.12)' : 'rgba(255,255,255,0.04)',
-            fontWeight: todayIdx === idx ? 700 : 500,
-            border: todayIdx === idx ? '2px solid #ff1744' : '1px solid #222',
+            bgcolor: mounted && todayIdx === idx ? 'rgba(255,23,68,0.12)' : 'rgba(255,255,255,0.04)',
+            fontWeight: mounted && todayIdx === idx ? 700 : 500,
+            border: mounted && todayIdx === idx ? '2px solid #ff1744' : '1px solid #222',
             width: '100%',
             boxSizing: 'border-box',
           }}>
@@ -148,10 +151,40 @@ function getOpenStatus(today: OpeningTime, now: Date): OpenStatus {
             {ot.open === 'Closed' ? (
               <Typography variant="body1" sx={{ color: '#bbb', fontWeight: 700 }}>CLOSED</Typography>
             ) : (
-              <Typography variant="body1" sx={{ color: '#38ef7d', fontWeight: 700 }}>{ot.open} - {ot.close}</Typography>
+              <Typography variant="body1" sx={{ color: '#38ef7d', fontWeight: 700 }}>{ot.open}:00 - {ot.close}:00</Typography>
             )}
           </Box>
         ))}
+      </Box>
+      <Box sx={{ width: '100%', mt: 2, display: 'flex', justifyContent: 'center' }}>
+        <Tooltip title={mounted ? (openStatus.status === 'open' ? 'Book now' : openStatus.message) : 'Checking...'} arrow>
+          <span>
+            <Button
+              variant="contained"
+              disabled={!mounted || openStatus.status !== 'open'}
+              onClick={() => {
+                // try to focus booking form or scroll to bottom
+                const form = document.querySelector('form');
+                if (form) {
+                  form.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                  // focus first input if available
+                  const input = form.querySelector('input, textarea, button');
+                  if (input && typeof (input as HTMLElement).focus === 'function') (input as HTMLElement).focus();
+                  // add a temporary pulse class to draw attention
+                  try {
+                    form.classList.add('pulse-highlight');
+                    setTimeout(() => form.classList.remove('pulse-highlight'), 1200);
+                  } catch (e) {}
+                } else {
+                  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+              }}
+              sx={{ px: 4, py: 1.25, borderRadius: 3, background: mounted && openStatus.status === 'open' ? 'linear-gradient(90deg,#11998e,#38ef7d)' : 'linear-gradient(90deg,#555,#777)' }}
+            >
+              Book Now
+            </Button>
+          </span>
+        </Tooltip>
       </Box>
     </Box>
   );

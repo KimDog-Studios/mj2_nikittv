@@ -106,12 +106,14 @@ function NavBar() {
     const handleKeyDown = (e) => {
       const active = document.activeElement;
       const isSearchFocused = searchRef.current && active === searchRef.current;
+      // guard e.key in case it's undefined (some events may not have it)
+      const key = typeof e.key === 'string' ? e.key.toLowerCase() : null;
       if (
-        e.key.toLowerCase() === 'f' &&
+        key === 'f' &&
         !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey &&
         !isSearchFocused
       ) {
-        if (searchRef.current) {
+        if (searchRef.current && typeof searchRef.current.focus === 'function') {
           searchRef.current.focus();
           e.preventDefault();
         }
@@ -122,10 +124,12 @@ function NavBar() {
   }, []);
 
   return (
-    <AppBar position="static" elevation={0} sx={{
+    <AppBar position="sticky" elevation={6} sx={{
+      top: 0,
+      zIndex: (theme) => (theme.zIndex?.appBar ?? 1100) + 10,
       background: 'rgba(35,37,38,0.85)',
       backdropFilter: 'blur(12px)',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
       borderBottom: '1px solid #222',
     }}>
       <Toolbar sx={{ minHeight: 88, px: 2 }}>
@@ -222,7 +226,7 @@ function NavBar() {
                 transform: 'scale(1.06)',
               },
             }}
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.href = '/about-us'}
           >About</Button>
           <Button
             variant="contained"
