@@ -35,7 +35,7 @@ export default function AdminLogin() {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/manage_booking');
+      router.push('/pages/manage_booking');
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
       else setError(String(err ?? 'Sign-in failed'));
