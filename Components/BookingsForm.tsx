@@ -31,6 +31,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'fire
 import { db, rtdb } from './firebaseClient';
 import { ref, push, set, get } from 'firebase/database';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -116,6 +117,7 @@ interface Props {
 
 function ManageBookings({ selectedLocation, onLocationChange }: Props) {
   const theme = useTheme();
+  const router = useRouter();
   const [form, setForm] = useState<FormState>({ name: '', email: '', phone: '', location: selectedLocation ?? '', venue: '', package: '', date: null, message: '', time: null, acceptTerms: false });
   const [openSnack, setOpenSnack] = useState(false);
   const [snackMsg, setSnackMsg] = useState('');
@@ -815,9 +817,11 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
     setSubmitting(true);
     try {
       const isoDate = normalizeDateToISO(form.date);
+      // Generate random booking ID
+      const bookingId = 'MJ' + Math.random().toString(36).substring(2, 8).toUpperCase();
       // Simplified submission without conflict check for now
       const { date, time, ...rest } = form;
-      const payload = { ...rest, date: isoDate, time: form.time?.format('HH:mm') } as any;
+      const payload = { ...rest, date: isoDate, time: form.time?.format('HH:mm'), bookingId } as any;
       if (rtdb) {
         // write to Realtime Database under /bookings
         const bookingsRef = ref(rtdb, 'bookings');
@@ -857,6 +861,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
             <p>We have received your booking details and will review them shortly. Our team will contact you within 24-48 hours to confirm your appointment and provide any additional information required.</p>
             <p><strong>Booking Details:</strong></p>
             <ul>
+                <li><strong>Booking ID:</strong> ${bookingId}</li>
                 <li><strong>Name:</strong> ${form.name}</li>
                 <li><strong>Email:</strong> ${form.email}</li>
                 <li><strong>Phone:</strong> ${form.phone}</li>
@@ -895,7 +900,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
       localStorage.removeItem('mj2_booking_form');
 
       setSubmissionError(null);
-      setOpenDialog(true);
+      router.push('/pages/booking_status?bookingId=' + bookingId);
     } catch (err: any) {
       console.error('Booking submission error:', err);
       const message = err?.message ? `Submission failed: ${err.message}` : 'Submission failed — check console for details.';
