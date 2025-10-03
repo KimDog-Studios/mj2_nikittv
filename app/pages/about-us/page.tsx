@@ -12,7 +12,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 const members = [
-  { name: 'Liam Paterson', role: 'Manager/Lead Dancer', bio: 'Founded the company and is the Main Dancer.', avatar: '/Pic1.png' },
+  { name: 'Liam Paterson', role: 'Manager/Lead Dancer', bio: 'Founded the company and is the Main Dancer.', avatar: 'https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pictures/NikiAvatar.png' },
   { name: 'KimDog', role: 'Social Media Manager', bio: 'Handles all the Social Media and Website side of things.', avatar: 'https://raw.githubusercontent.com/KimDog-Studios/KimDog-Studios/main/KimDog.png' },
 ];
 
