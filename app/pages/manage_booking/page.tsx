@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import ManageBookings from '@/Components/BookingsForm';
 import BookingsAdmin from '@/Components/BookingsAdmin';
 import ShowsCalendar from '@/Components/ShowsCalendar';
+import EmailSystem from '@/Components/EmailSystem';
 import { auth } from '@/Components/firebaseClient';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -38,6 +39,7 @@ export default function ManageBookingPage() {
       <ManageBookings />
       <Box sx={{ maxWidth: 1100, mx: 'auto', px: 2 }}>
         <BookingsAdmin />
+        <EmailSystem />
         <ShowsCalendar />
       </Box>
     </>

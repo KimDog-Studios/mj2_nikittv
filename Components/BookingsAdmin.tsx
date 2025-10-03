@@ -909,7 +909,7 @@ export default function BookingsAdmin() {
         <Snackbar open={snack.open} autoHideDuration={5000} onClose={() => setSnack({ ...snack, open: false })}>
           <Alert severity={snack.severity} onClose={() => setSnack({ ...snack, open: false })} sx={{ width: '100%' }}>{snack.message}</Alert>
         </Snackbar>
-        <audio ref={audioRef} src="" preload="auto" />
+        <audio ref={audioRef} src="/app/notification_Sound.mp3" preload="auto" />
       </Paper>
     </motion.div>
   );

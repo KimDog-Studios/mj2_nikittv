@@ -149,6 +149,70 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
         // send to Firestore
         await addDoc(collection(db, 'bookings'), { ...payload, createdAt: serverTimestamp() });
       }
+
+      // Send confirmation email
+      try {
+        const emailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Booking Confirmation</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #1e1e1e; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJ2 Studios</h1>
+            <p>Michael Jackson Tributes</p>
+        </div>
+        <div class="content">
+            <h2>Booking Confirmation</h2>
+            <p>Dear ${form.name},</p>
+            <p>Thank you for choosing MJ2 Studios for your photography or videography needs.</p>
+            <p>We have received your booking details and will review them shortly. Our team will contact you within 24-48 hours to confirm your appointment and provide any additional information required.</p>
+            <p><strong>Booking Details:</strong></p>
+            <ul>
+                <li><strong>Name:</strong> ${form.name}</li>
+                <li><strong>Email:</strong> ${form.email}</li>
+                <li><strong>Phone:</strong> ${form.phone}</li>
+                <li><strong>Location:</strong> ${form.location}</li>
+                <li><strong>Venue:</strong> ${form.venue}</li>
+                <li><strong>Preferred Date:</strong> ${normalizeDateToISO(form.date)}</li>
+                <li><strong>Preferred Time:</strong> ${form.time?.format('HH:mm')}</li>
+            </ul>
+            <p>If you have any questions in the meantime, please don't hesitate to contact us on our Website</p>
+            <p>We look forward to working with you!</p>
+            <p>Best regards,<br>The MJ2 Studios Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2025 MJ2 Studios. All rights reserved.</p>
+            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: form.email,
+            subject: 'Booking Confirmation - MJ2 Studios',
+            body: emailBody
+          }),
+        });
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't block success dialog for email failure
+      }
+
       setSubmissionError(null);
       setOpenDialog(true);
     } catch (err: any) {
