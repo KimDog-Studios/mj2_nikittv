@@ -305,7 +305,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
   <TimePicker label="Preferred Time" value={form.time} onChange={(newValue) => setForm(prev => ({ ...prev, time: newValue }))} slotProps={{ textField: { sx: { '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }, error: !!errors.time, helperText: errors.time ?? 'Optional — use 24-hour format (HH:MM)' } }} />
         <TextField label="Message" variant="outlined" multiline rows={4} fullWidth value={form.message} onChange={handleChange('message')} sx={{ gridColumn: '1 / -1', '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} />
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, gridColumn: '1 / -1', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <Link href="/contact-us" passHref>
+          <Link href="/pages/contact-us" passHref>
             <Button variant="text" sx={{ color: '#d1d5db', textTransform: 'none', '&:hover': { color: '#f9fafb', bgcolor: 'rgba(255,255,255,0.1)' } }}>
               Having Issues? Contact Us
             </Button>
