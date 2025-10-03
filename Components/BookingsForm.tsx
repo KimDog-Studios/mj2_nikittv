@@ -14,6 +14,24 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'fire
 import { db, rtdb } from './firebaseClient';
 import { ref, push, set, get } from 'firebase/database';
 
+function parseTime(value: any): Date | null {
+  if (!value) return null;
+  if (value?.toDate && typeof value.toDate === 'function') return value.toDate();
+  if (typeof value === 'number') return new Date(value);
+  if (typeof value === 'string') {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) return d;
+    // try dd/mm/yyyy
+    const dmy = /^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/;
+    const m = value.match(dmy);
+    if (m) {
+      const [, dd, mm, yyyy] = m;
+      return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    }
+  }
+  return null;
+}
+
 interface FormState {
   name: string;
   email: string;
@@ -98,8 +116,108 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
 
     setSubmitting(true);
     try {
-  // If user provided a date+time, check for conflicts (same date and same time)
+  // First: block if this customer already has an active/upcoming booking
+  // We'll consider a booking active/upcoming if its end time is in the future.
+  const now = new Date();
+  const DEFAULT_DURATION_MS = 1000 * 60 * 60 * 2; // 2 hours default
   const isoDate = normalizeDateToISO(form.date || '');
+  if (form.name && form.name.trim()) {
+    const nameLower = form.name.trim().toLowerCase();
+    if (rtdb) {
+      const snapshotAll = await get(ref(rtdb, 'bookings'));
+      const valAll = (snapshotAll && (snapshotAll as any).val && (snapshotAll as any).val()) || {};
+      const entries: any[] = Object.values(valAll);
+      for (const b of entries) {
+        if (!b || !b.name) continue;
+        if ((b.name || '').toString().trim().toLowerCase() !== nameLower) continue;
+        // compute normalized date for existing booking
+        const bIso = normalizeDateToISO(b.date || '');
+        // If both bookings have a date and they match => block
+        if (isoDate && bIso && isoDate === bIso) {
+          // if both provide times, check time equality/overlap
+          if (form.time && b.time) {
+            if (form.time === b.time) {
+              throw new Error('You already have a booking with the same name and time on that date. Please choose another date or time.');
+            }
+            // optional: overlap logic could go here; for now, equal times are blocked
+          } else {
+            // either booking is full-day or one has no time — treat as conflict
+            throw new Error('You already have a booking on that date. Please wait until it is completed before requesting another.');
+          }
+        }
+        // If no date provided (or dates don't match), fallback to blocking active/upcoming bookings
+        let start = null as Date | null;
+        if (bIso) {
+          const [yy, mm, dd] = bIso.split('-').map(Number);
+          if (b.time) {
+            const [hh, min] = (b.time || '00:00').split(':').map(Number);
+            start = new Date(yy, mm - 1, dd, hh || 0, min || 0, 0);
+          } else {
+            start = new Date(yy, mm - 1, dd, 0, 0, 0);
+          }
+        } else if (b.createdAt) {
+          if (typeof b.createdAt === 'number') start = new Date(b.createdAt);
+          else if (b.createdAt?.toDate) start = b.createdAt.toDate();
+        }
+        const end = start ? (b.end ? parseTime(b.end) ?? new Date(start.getTime() + DEFAULT_DURATION_MS) : new Date(start.getTime() + DEFAULT_DURATION_MS)) : null;
+        if (end && end.getTime() > now.getTime()) {
+          throw new Error('You already have an active or upcoming booking. Please wait until that booking is completed before requesting another.');
+        }
+      }
+    } else {
+      // Firestore: try server-side equality query first, then fallback to client-side case-insensitive scan if nothing returned
+      try {
+        const qByName = query(collection(db, 'bookings'), where('name', '==', form.name));
+        const snapByName = await getDocs(qByName);
+        let docsToCheck: any[] = [];
+        if (!snapByName.empty) {
+          docsToCheck = snapByName.docs.map(d => ({ id: d.id, ...d.data() }));
+        } else {
+          // fallback: fetch all bookings and filter case-insensitively (small apps only)
+          const allSnap = await getDocs(collection(db, 'bookings'));
+          docsToCheck = allSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((b: any) => (b.name || '').toString().trim().toLowerCase() === nameLower);
+        }
+        for (const docB of docsToCheck) {
+          const b: any = docB;
+          if (!b || !b.name) continue;
+          if ((b.name || '').toString().trim().toLowerCase() !== nameLower) continue;
+          const bIso = normalizeDateToISO(b.date || '');
+          if (isoDate && bIso && isoDate === bIso) {
+            if (form.time && b.time) {
+              if (form.time === b.time) {
+                throw new Error('You already have a booking with the same name and time on that date. Please choose another date or time.');
+              }
+            } else {
+              throw new Error('You already have a booking on that date. Please wait until it is completed before requesting another.');
+            }
+          }
+          // fallback: block active/upcoming bookings
+          let start: Date | null = null;
+          if (bIso) {
+            const [yy, mm, dd] = bIso.split('-').map(Number);
+            if (b.time) {
+              const [hh, min] = (b.time || '00:00').split(':').map(Number);
+              start = new Date(yy, mm - 1, dd, hh || 0, min || 0, 0);
+            } else {
+              start = new Date(yy, mm - 1, dd, 0, 0, 0);
+            }
+          } else if (b.createdAt) {
+            if (typeof b.createdAt === 'number') start = new Date(b.createdAt);
+            else if (b.createdAt?.toDate) start = b.createdAt.toDate();
+          }
+          const end = start ? (b.end ? parseTime(b.end) ?? new Date(start.getTime() + DEFAULT_DURATION_MS) : new Date(start.getTime() + DEFAULT_DURATION_MS)) : null;
+          if (end && end.getTime() > now.getTime()) {
+            throw new Error('You already have an active or upcoming booking. Please wait until that booking is completed before requesting another.');
+          }
+        }
+      } catch (err) {
+        // allow other checks to proceed if this query fails silently
+        console.warn('Name-based booking check failed', err);
+      }
+    }
+  }
+  // If user provided a date+time, check for conflicts (same date and same time)
+      
       if (isoDate && form.time) {
         if (rtdb) {
           if (rtdb) {
