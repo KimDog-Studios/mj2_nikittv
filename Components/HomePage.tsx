@@ -258,8 +258,8 @@ function HomePage() {
                 animation: 'iconDance 2s ease-in-out infinite',
                 filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.5))',
               }} />
-              <div style={{ width: '600px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                <TypeAnimation sequence={['MJ2 Tribute — Live Shows & Bookings', 2000, 'Authentic MJ Experience', 2000, 'Thrilling Performances Await', 2000, 'Unforgettable MJ Magic', 2000]} wrapper="span" cursor={false} repeat={Infinity} />
+              <div style={{ width: '600px', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <TypeAnimation sequence={['MJ2 Tribute — Live Shows & Bookings', 2000, 'Authentic MJ Experience', 2000, 'Thrilling Performances Await', 2000, 'Unforgettable MJ Magic', 2000]} wrapper="span" cursor={true} repeat={Infinity} />
               </div>
               <MusicNote sx={{
                 fontSize: 'clamp(2.2rem, 4vw, 3.2rem)',
