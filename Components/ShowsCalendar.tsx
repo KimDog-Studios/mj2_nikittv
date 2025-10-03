@@ -15,6 +15,14 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Button from '@mui/material/Button';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Tooltip from '@mui/material/Tooltip';
+import TextField from '@mui/material/TextField';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 import { db, rtdb } from './firebaseClient';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { ref as rref, onValue } from 'firebase/database';
@@ -90,6 +98,9 @@ export default function ShowsCalendar() {
   const [month, setMonth] = useState<number>(new Date().getMonth());
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'calendar' | 'upcoming'>('calendar');
+  const [venueFilter, setVenueFilter] = useState('');
+  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   useEffect(() => {
     setError(null);
     // We'll subscribe to both /shows and /bookings and merge them into one list
@@ -278,25 +289,94 @@ export default function ShowsCalendar() {
     cells.push({ date: d, inMonth: d.getMonth() === month, key: formatKey(d) });
   }
 
+  const jumpToToday = () => {
+    const today = new Date();
+    setYear(today.getFullYear());
+    setMonth(today.getMonth());
+  };
+
+  const upcomingShows = shows.filter(s => s.start > now).sort((a, b) => a.start.getTime() - b.start.getTime());
+  const filteredUpcoming = upcomingShows.filter(s => {
+    if (venueFilter && !s.venue?.toLowerCase().includes(venueFilter.toLowerCase())) return false;
+    if (dateRangeFilter === 'today') return s.start.toDateString() === now.toDateString();
+    if (dateRangeFilter === 'week') {
+      const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return s.start <= weekFromNow;
+    }
+    if (dateRangeFilter === 'month') {
+      const monthFromNow = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+      return s.start <= monthFromNow;
+    }
+    return true;
+  });
+
   return (
-    <Paper sx={{ p: 2, mt: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h6">Shows Calendar</Typography>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="caption" color="text.secondary">Now: {mounted ? now.toLocaleString() : now.toISOString().replace('T', ' ').slice(0,19)}</Typography>
-          <IconButton size="small" onClick={prevMonth}><ChevronLeftIcon /></IconButton>
-          <Typography variant="subtitle2" sx={{ minWidth: 140, textAlign: 'center' }}>{mounted ? startOfMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' }) : `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth()+1).padStart(2,'0')}`}</Typography>
-          <IconButton size="small" onClick={nextMonth}><ChevronRightIcon /></IconButton>
+    <Paper sx={{ p: 2, mt: 3, background: 'linear-gradient(135deg, #1e1e1e 0%, #3a3a3a 100%)', borderRadius: 3, color: '#f5f5f5' }}>
+      <Stack direction="column" spacing={1}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#ffffff' }}>Shows Calendar</Typography>
+          <Button variant="outlined" size="small" onClick={jumpToToday}>Today</Button>
         </Stack>
+        <Tabs value={viewMode} onChange={(_, newValue) => setViewMode(newValue)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tab label="Calendar" value="calendar" />
+          <Tab label={`Upcoming (${upcomingShows.length})`} value="upcoming" />
+        </Tabs>
+        {viewMode === 'calendar' && (
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+            <Typography variant="caption" sx={{ color: '#e0e0e0' }}>Now: {mounted ? now.toLocaleString() : now.toISOString().replace('T', ' ').slice(0,19)}</Typography>
+            <IconButton size="small" onClick={prevMonth}><ChevronLeftIcon /></IconButton>
+            <Typography variant="subtitle2" sx={{ minWidth: 140, textAlign: 'center', color: '#ffffff' }}>{mounted ? startOfMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' }) : `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth()+1).padStart(2,'0')}`}</Typography>
+            <IconButton size="small" onClick={nextMonth}><ChevronRightIcon /></IconButton>
+          </Stack>
+        )}
       </Stack>
       <Divider sx={{ my: 1 }} />
 
-      {error ? <Typography color="error">{error}</Typography> : (
+      {error ? <Typography color="error">{error}</Typography> : viewMode === 'upcoming' ? (
+        <Box sx={{ mt: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+            <TextField
+              label="Filter by Venue"
+              variant="outlined"
+              size="small"
+              value={venueFilter}
+              onChange={(e) => setVenueFilter(e.target.value)}
+              sx={{ minWidth: 200 }}
+            />
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Date Range</InputLabel>
+              <Select
+                value={dateRangeFilter}
+                label="Date Range"
+                onChange={(e) => setDateRangeFilter(e.target.value as typeof dateRangeFilter)}
+              >
+                <MenuItem value="all">All Upcoming</MenuItem>
+                <MenuItem value="today">Today</MenuItem>
+                <MenuItem value="week">This Week</MenuItem>
+                <MenuItem value="month">This Month</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+          <Typography variant="h6" sx={{ mt: 2, color: '#ffffff' }}>Upcoming Shows ({filteredUpcoming.length})</Typography>
+          <List>
+            {filteredUpcoming.map((s) => (
+              <ListItem key={s.id} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <ListItemText
+                  primary={`${s.title}${s.venue ? ' @ ' + s.venue : ''}`}
+                  secondary={`${mounted ? s.start.toLocaleString() : s.start.toISOString()}${s.end ? ' — ' + (mounted ? s.end.toLocaleString() : s.end.toISOString()) : ''}${s.description ? ' — ' + s.description : ''}`}
+                />
+                {isActive(s) && <Chip label="LIVE" color="error" size="small" />}
+                {!isActive(s) && (s.start.getTime() - now.getTime()) < 86400000 && <Chip label="Soon" color="warning" size="small" />}
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      ) : (
         <Box sx={{ mt: 1 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
             {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => (
-              <Box key={d} sx={{ p: 1, textAlign: 'center', background: '#fafafa', borderRadius: 1 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700 }}>{d}</Typography>
+              <Box key={d} sx={{ p: 1, textAlign: 'center', background: '#333', borderRadius: 1 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: '#f5f5f5' }}>{d}</Typography>
               </Box>
             ))}
           </Box>
@@ -306,6 +386,7 @@ export default function ShowsCalendar() {
               const dayShows = map[c.key] || [];
               // avoid computing "today" during SSR to prevent mismatches; only show after mount
               const isToday = mounted ? c.key === formatKey(new Date()) : false;
+              const hasUpcoming = dayShows.some(s => s.start > now);
               return (
                 <Box
                   key={c.key}
@@ -313,31 +394,34 @@ export default function ShowsCalendar() {
                   sx={{
                     p: 1.25,
                     minHeight: 120,
-                    borderRadius: 1,
+                    borderRadius: 2,
                     cursor: 'pointer',
-                    background: c.inMonth ? (isToday ? 'rgba(25,118,210,0.06)' : 'transparent') : '#f7f7f7',
-                    boxShadow: c.inMonth ? 'none' : 'none',
-                    ':hover': { boxShadow: 1 },
+                    background: c.inMonth ? 'linear-gradient(135deg, #4b0082, #8a2be2)' : '#2a2a2a',
+                    boxShadow: c.inMonth ? (isToday ? '0 0 0 3px rgba(25,118,210,0.6)' : hasUpcoming ? '0 0 0 3px rgba(76,175,80,0.4)' : '0 2px 4px rgba(0,0,0,0.3)') : 'none',
+                    transition: 'all 0.3s ease',
+                    ':hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' },
                     display: 'flex',
                     flexDirection: 'column'
                   }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 14, color: c.inMonth ? 'text.primary' : 'text.secondary' }}>{c.date.getDate()}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 14, color: c.inMonth ? '#ffffff' : '#cccccc' }}>{c.date.getDate()}</Typography>
                     {isToday ? <Chip label="Today" size="small" color="primary" /> : null}
                   </Box>
 
-                  <Box sx={{ overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {dayShows.slice(0, 3).map((s) => (
-                      <Box key={s.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 700 }}>{s.title}</Typography>
-                          {isActive(s) ? <Chip label="LIVE" color="error" size="small" sx={{ ml: 0.5 }} /> : null}
+                  <Box sx={{ overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {dayShows.slice(0, 4).map((s) => (
+                      <Tooltip key={s.id} title={`${s.title} @ ${s.venue || 'N/A'} - ${s.start.toLocaleString()}${s.description ? ' - ' + s.description : ''}`}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, p: 0.5, borderRadius: 0.5, background: 'rgba(255,255,255,0.1)', transition: 'background 0.3s ease' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#ffffff' }}>{s.title}</Typography>
+                            {isActive(s) ? <Chip label="LIVE" color="error" size="small" sx={{ ml: 0.5 }} /> : (s.start.getTime() - now.getTime()) < 86400000 ? <Chip label="Soon" color="warning" size="small" sx={{ ml: 0.5 }} /> : null}
+                          </Box>
+                          <Typography variant="caption" sx={{ color: '#e0e0e0' }}>{mounted ? s.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : s.start.toISOString().slice(11,16)}</Typography>
                         </Box>
-                        <Typography variant="caption" color="text.secondary">{mounted ? s.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : s.start.toISOString().slice(11,16)}</Typography>
-                      </Box>
+                      </Tooltip>
                     ))}
-                    {dayShows.length > 3 ? <Typography variant="caption">+{dayShows.length - 3} more</Typography> : null}
+                    {dayShows.length > 4 ? <Typography variant="caption" sx={{ color: '#ffffff' }}>+{dayShows.length - 4} more</Typography> : null}
                   </Box>
                 </Box>
               );
@@ -379,7 +463,7 @@ export default function ShowsCalendar() {
                               primary={`${s.title}${s.venue ? ' @ ' + s.venue : ''}`}
                               secondary={`${mounted ? s.start.toLocaleString() : s.start.toISOString()}${s.end ? (mounted ? ' — ' + s.end.toLocaleString() : ' — ' + s.end.toISOString()) : ''}${s.description ? ' — ' + s.description : ''}`}
                             />
-                            {isActive(s) ? <Chip label="LIVE" color="error" size="small" /> : null}
+                            {isActive(s) ? <Chip label="LIVE" color="error" size="small" /> : (s.start.getTime() - now.getTime()) < 86400000 ? <Chip label="Soon" color="warning" size="small" /> : null}
                           </ListItem>
                           <Divider />
                         </React.Fragment>

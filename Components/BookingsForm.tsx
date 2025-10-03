@@ -10,9 +10,21 @@ import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db, rtdb } from './firebaseClient';
 import { ref, push, set, get } from 'firebase/database';
+import Link from 'next/link';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import dayjs, { Dayjs } from 'dayjs';
 
 function parseTime(value: any): Date | null {
   if (!value) return null;
@@ -37,8 +49,8 @@ interface FormState {
   email: string;
   phone: string;
   location: string;
-  date: string;
-  time?: string;
+  date: Dayjs | null;
+  time: Dayjs | null;
   message: string;
 }
 
@@ -48,13 +60,14 @@ interface Props {
 }
 
 function ManageBookings({ selectedLocation, onLocationChange }: Props) {
-  const [form, setForm] = useState<FormState>({ name: '', email: '', phone: '', location: selectedLocation ?? '', date: '', message: '', time: '' });
+  const [form, setForm] = useState<FormState>({ name: '', email: '', phone: '', location: selectedLocation ?? '', date: null, message: '', time: null });
   const [openSnack, setOpenSnack] = useState(false);
   const [snackMsg, setSnackMsg] = useState('');
   const [snackSeverity, setSnackSeverity] = useState<'success' | 'error'>('success');
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState(false);
 
   const handleChange = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [key]: e.target.value });
 
@@ -73,33 +86,18 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
       const phoneRe = /^[0-9+\-()\s]+$/;
       if (!phoneRe.test(vals.phone)) e.phone = 'Enter a valid phone number';
     }
-    if (vals.date && vals.date.trim()) {
-      // Check DD/MM/YYYY or YYYY-MM-DD basic formats
-      const d1 = /^\d{2}\/\d{2}\/\d{4}$/;
-      const d2 = /^\d{4}-\d{2}-\d{2}$/;
-      if (!d1.test(vals.date) && !d2.test(vals.date)) e.date = 'Use DD/MM/YYYY or YYYY-MM-DD';
+    if (!vals.date) {
+      e.date = 'Date is required';
+    } else if (vals.date.isBefore(dayjs(), 'day')) {
+      e.date = 'Date must be in the future';
     }
-    // time is optional but if provided should be HH:MM
-    if (vals.time && vals.time.trim()) {
-      const t = /^\d{2}:\d{2}$/;
-      if (!t.test(vals.time)) e.time = 'Use HH:MM format (24-hour)';
-    }
+    // time is optional
     return e;
   };
 
-  function normalizeDateToISO(dateStr: string) {
-    if (!dateStr) return '';
-    const d1 = /^\d{2}\/\d{2}\/\d{4}$/;
-    const d2 = /^\d{4}-\d{2}-\d{2}$/;
-    if (d2.test(dateStr)) return dateStr;
-    if (d1.test(dateStr)) {
-      const [dd, mm, yyyy] = dateStr.split('/');
-      return `${yyyy}-${mm}-${dd}`;
-    }
-    // fallback attempt
-    const parsed = new Date(dateStr);
-    if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-    return '';
+  function normalizeDateToISO(date: Dayjs | null) {
+    if (!date) return '';
+    return date.format('YYYY-MM-DD');
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -120,7 +118,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
   // We'll consider a booking active/upcoming if its end time is in the future.
   const now = new Date();
   const DEFAULT_DURATION_MS = 1000 * 60 * 60 * 2; // 2 hours default
-  const isoDate = normalizeDateToISO(form.date || '');
+  const isoDate = normalizeDateToISO(form.date);
   if (form.name && form.name.trim()) {
     const nameLower = form.name.trim().toLowerCase();
     if (rtdb) {
@@ -136,7 +134,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
         if (isoDate && bIso && isoDate === bIso) {
           // if both provide times, check time equality/overlap
           if (form.time && b.time) {
-            if (form.time === b.time) {
+            if (form.time.format('HH:mm') === b.time) {
               throw new Error('You already have a booking with the same name and time on that date. Please choose another date or time.');
             }
             // optional: overlap logic could go here; for now, equal times are blocked
@@ -184,7 +182,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
           const bIso = normalizeDateToISO(b.date || '');
           if (isoDate && bIso && isoDate === bIso) {
             if (form.time && b.time) {
-              if (form.time === b.time) {
+              if (form.time.format('HH:mm') === b.time) {
                 throw new Error('You already have a booking with the same name and time on that date. Please choose another date or time.');
               }
             } else {
@@ -225,21 +223,22 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
             const val = (snapshot && (snapshot as any).val && (snapshot as any).val()) || {};
             const conflict = Object.values(val).some((b: any) => {
               const bDate = b.date ? (b.date.indexOf('-') > -1 ? b.date.split('T')[0] : (b.date.indexOf('/') > -1 ? (() => { const [d,m,y]=b.date.split('/'); return `${y}-${m}-${d}` })() : b.date)) : '';
-              return bDate === isoDate && (b.time || '') === form.time;
+              return bDate === isoDate && (b.time || '') === (form.time ? form.time.format('HH:mm') : '');
             });
             if (conflict) {
               throw new Error('Preferred time already taken on that date. Please choose another time.');
             }
           }
         } else {
-          const q = query(collection(db, 'bookings'), where('date', '==', isoDate), where('time', '==', form.time));
+          const q = query(collection(db, 'bookings'), where('date', '==', isoDate), where('time', '==', form.time.format('HH:mm')));
           const snap = await getDocs(q);
           if (!snap.empty) {
             throw new Error('Preferred time already taken on that date. Please choose another time.');
           }
         }
       }
-        const payload = { ...form, dateISO: isoDate ? isoDate : undefined } as any;
+        const { date, time, ...rest } = form;
+        const payload = { ...rest, date: isoDate, time: form.time?.format('HH:mm') } as any;
         if (rtdb) {
           // write to Realtime Database under /bookings
           const bookingsRef = ref(rtdb, 'bookings');
@@ -250,11 +249,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
           await addDoc(collection(db, 'bookings'), { ...payload, createdAt: serverTimestamp() });
         }
   setSubmissionError(null);
-  setSnackMsg('Booking submitted — we will contact you soon.');
-      setSnackSeverity('success');
-      setOpenSnack(true);
-  setForm({ name: '', email: '', phone: '', location: '', date: '', message: '', time: '' });
-      setErrors({});
+  setOpenDialog(true);
     } catch (err: any) {
       console.error('Booking submission error:', err);
       const message = err?.message ? `Submission failed: ${err.message}` : 'Submission failed — check console for details.';
@@ -283,43 +278,46 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
 
   return (
     <Box sx={{
-      bgcolor: '#ffffff',
-      color: '#232526',
-      p: 4,
-      borderRadius: 3,
-      boxShadow: '0 12px 30px rgba(15,23,42,0.08)',
-      maxWidth: 720,
+      bgcolor: '#1f2937',
+      color: '#f9fafb',
+      p: { xs: 3, sm: 4 },
+      borderRadius: 4,
+      border: '1px solid rgba(255,255,255,0.1)',
+      boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+      maxWidth: 800,
       mx: 'auto',
       mt: 6,
+      background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
+      transition: 'all 0.3s ease-in-out',
+      '&:hover': {
+        boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+      },
     }}>
-      <Typography variant="h5" sx={{ fontWeight: 800, mb: 1, color: '#232526' }}>Booking Application</Typography>
-      <Typography variant="body2" sx={{ color: '#555', mb: 2 }}>Fill in your details below to apply for a booking. This form will submit to our Secure Database</Typography>
-      <Box component="form" onSubmit={handleSubmit} noValidate autoComplete="off" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 2 }}>
-  <TextField label="Full name" placeholder="e.g. John Smith" variant="outlined" value={form.name} onChange={handleChange('name')} InputProps={{ startAdornment: (<InputAdornment position="start"><PersonOutlineIcon sx={{ color: '#9e9e9e' }} /></InputAdornment>) }} sx={{ bgcolor: '#fafafa', borderRadius: 1 }} required error={!!errors.name} helperText={errors.name} />
-  <TextField label="Email" placeholder="you@example.com" variant="outlined" value={form.email} onChange={handleChange('email')} InputProps={{ startAdornment: (<InputAdornment position="start"><EmailOutlinedIcon sx={{ color: '#9e9e9e' }} /></InputAdornment>) }} helperText={errors.email ?? 'We will contact you to confirm the booking'} sx={{ bgcolor: '#fafafa', borderRadius: 1 }} required error={!!errors.email} />
-  <TextField label="Phone" placeholder="01234 567890" variant="outlined" value={form.phone} onChange={handleChange('phone')} InputProps={{ startAdornment: (<InputAdornment position="start"><PhoneOutlinedIcon sx={{ color: '#9e9e9e' }} /></InputAdornment>) }} sx={{ bgcolor: '#fafafa', borderRadius: 1 }} error={!!errors.phone} helperText={errors.phone} />
-        <TextField label="Location" placeholder="Town or venue" variant="outlined" value={form.location} onChange={handleLocationChange} sx={{ bgcolor: '#fafafa', borderRadius: 1 }} />
-  <TextField label="Preferred Date" placeholder="DD/MM/YYYY" variant="outlined" value={form.date} onChange={handleChange('date')} sx={{ bgcolor: '#fafafa', borderRadius: 1 }} error={!!errors.date} helperText={errors.date} />
-  <TextField
-    label="Preferred Time"
-    type="time"
-    variant="outlined"
-    value={form.time}
-    onChange={handleChange('time')}
-    sx={{ bgcolor: '#fafafa', borderRadius: 1 }}
-    error={!!errors.time}
-    helperText={errors.time ?? 'Optional — use 24-hour format (HH:MM)'}
-    inputProps={{ step: 300 }}
-  />
-        <TextField label="Message" variant="outlined" multiline rows={4} fullWidth value={form.message} onChange={handleChange('message')} sx={{ gridColumn: '1 / -1', bgcolor: '#fafafa', borderRadius: 1 }} />
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gridColumn: '1 / -1' }}>
-          <Button type="submit" disabled={submitting} variant="contained" sx={{ background: 'linear-gradient(90deg,#232526,#444)', px: 4, py: 1.2, borderRadius: 2, color: '#fff', opacity: submitting ? 0.7 : 1, '&:hover': { transform: submitting ? 'none' : 'translateY(-2px)', boxShadow: submitting ? 'none' : '0 8px 24px rgba(0,0,0,0.12)' } }}>{submitting ? 'Submitting...' : 'Submit'}</Button>
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 2, color: '#f9fafb', textAlign: 'center' }}>Book Your Session</Typography>
+      <Typography variant="body1" sx={{ color: '#d1d5db', mb: 3, textAlign: 'center', lineHeight: 1.6 }}>Please provide your details below. We'll securely store your booking and contact you to confirm.</Typography>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <Box component="form" onSubmit={handleSubmit} noValidate autoComplete="off" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 3 }}>
+  <TextField label="Full name" placeholder="e.g. John Smith" variant="outlined" value={form.name} onChange={handleChange('name')} InputProps={{ startAdornment: (<InputAdornment position="start"><PersonOutlineIcon sx={{ color: '#9ca3af' }} /></InputAdornment>) }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} required error={!!errors.name} helperText={errors.name} />
+  <TextField label="Email" placeholder="you@example.com" variant="outlined" value={form.email} onChange={handleChange('email')} InputProps={{ startAdornment: (<InputAdornment position="start"><EmailOutlinedIcon sx={{ color: '#9ca3af' }} /></InputAdornment>) }} helperText={errors.email ?? 'We will contact you to confirm the booking'} sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} required error={!!errors.email} />
+  <TextField label="Phone" placeholder="01234 567890" variant="outlined" value={form.phone} onChange={handleChange('phone')} InputProps={{ startAdornment: (<InputAdornment position="start"><PhoneOutlinedIcon sx={{ color: '#9ca3af' }} /></InputAdornment>) }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} error={!!errors.phone} helperText={errors.phone} />
+        <TextField label="Location" placeholder="Town or venue" variant="outlined" value={form.location} onChange={handleLocationChange} sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} />
+  <DatePicker label="Preferred Date" value={form.date} onChange={(newValue) => setForm(prev => ({ ...prev, date: newValue }))} shouldDisableDate={(date) => date.isBefore(dayjs(), 'day')} slotProps={{ textField: { sx: { '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }, error: !!errors.date, helperText: errors.date } }} />
+  <TimePicker label="Preferred Time" value={form.time} onChange={(newValue) => setForm(prev => ({ ...prev, time: newValue }))} slotProps={{ textField: { sx: { '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }, error: !!errors.time, helperText: errors.time ?? 'Optional — use 24-hour format (HH:MM)' } }} />
+        <TextField label="Message" variant="outlined" multiline rows={4} fullWidth value={form.message} onChange={handleChange('message')} sx={{ gridColumn: '1 / -1', '& .MuiOutlinedInput-root': { bgcolor: '#374151', borderRadius: 2, '&:hover': { bgcolor: '#4b5563' }, '&.Mui-focused': { bgcolor: '#1f2937', boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)' }, '& .MuiOutlinedInput-input': { color: '#f9fafb' }, '& .MuiInputLabel-root': { color: '#d1d5db' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.1)' } } }} />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, gridColumn: '1 / -1', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+          <Link href="/contact-us" passHref>
+            <Button variant="text" sx={{ color: '#d1d5db', textTransform: 'none', '&:hover': { color: '#f9fafb', bgcolor: 'rgba(255,255,255,0.1)' } }}>
+              Having Issues? Contact Us
+            </Button>
+          </Link>
+          <Button type="submit" disabled={submitting} variant="contained" sx={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', px: 5, py: 1.5, borderRadius: 3, color: '#fff', fontWeight: 600, width: { xs: '100%', sm: 'auto' }, opacity: submitting ? 0.7 : 1, transition: 'all 0.2s ease-in-out', '&:hover': { transform: submitting ? 'none' : 'translateY(-1px)', boxShadow: submitting ? 'none' : '0 10px 25px rgba(59, 130, 246, 0.3)' }, '&:active': { transform: 'translateY(0)' } }}>{submitting ? <> <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} /> Submitting... </> : 'Submit Booking'}</Button>
         </Box>
       </Box>
+      </LocalizationProvider>
       {/* Inline error panel below the form */}
       {submissionError || Object.keys(errors).length ? (
         <Box sx={{ mt: 2, maxWidth: 720, mx: 'auto', color: '#fff' }}>
-          <Box sx={{ bgcolor: '#ffebee', color: '#b00020', p: 2, borderRadius: 1 }}>
+          <Box sx={{ bgcolor: '#451a1a', color: '#fca5a5', p: 3, borderRadius: 3, border: '1px solid #7f1d1d' }} role="alert">
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>There are problems with your submission</Typography>
             {submissionError ? <Typography variant="body2" sx={{ mb: 1 }}>{submissionError}</Typography> : null}
             {Object.keys(errors).length ? (
@@ -333,11 +331,24 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
         </Box>
       ) : null}
       <Snackbar open={openSnack} autoHideDuration={6000} onClose={() => setOpenSnack(false)}>
-        <Alert onClose={() => setOpenSnack(false)} severity={snackSeverity} sx={{ width: '100%' }}>
-          {snackMsg}
-        </Alert>
-      </Snackbar>
-    </Box>
+         <Alert onClose={() => setOpenSnack(false)} severity={snackSeverity} sx={{ width: '100%' }}>
+           {snackMsg}
+         </Alert>
+       </Snackbar>
+       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} aria-labelledby="success-dialog-title" aria-describedby="success-dialog-description">
+         <DialogTitle id="success-dialog-title">Booking Submitted Successfully</DialogTitle>
+         <DialogContent>
+           <DialogContentText id="success-dialog-description">
+             Your booking has been submitted. We will contact you soon to confirm.
+           </DialogContentText>
+         </DialogContent>
+         <DialogActions>
+           <Button onClick={() => { setOpenDialog(false); setForm({ name: '', email: '', phone: '', location: '', date: null, message: '', time: null }); setErrors({}); }} color="primary" autoFocus>
+             OK
+           </Button>
+         </DialogActions>
+       </Dialog>
+     </Box>
   );
 }
 

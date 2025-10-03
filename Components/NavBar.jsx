@@ -1,13 +1,26 @@
 "use client";
 import React, { useRef, useEffect, useState } from 'react';
+import Link from 'next/link';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import InputBase from '@mui/material/InputBase';
+import IconButton from '@mui/material/IconButton';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemIcon from '@mui/material/ListItemIcon';
 import { alpha, styled } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
+import MenuIcon from '@mui/icons-material/Menu';
+import HomeIcon from '@mui/icons-material/Home';
+import InfoIcon from '@mui/icons-material/Info';
+import ContactMailIcon from '@mui/icons-material/ContactMail';
+import EventNoteIcon from '@mui/icons-material/EventNote';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -69,6 +82,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 function NavBar() {
   const searchRef = useRef(null);
   const [typedText, setTypedText] = useState('');
+  const [mobileOpen, setMobileOpen] = useState(false);
   const fullText = 'MJ2 Studios';
 
   useEffect(() => {
@@ -137,121 +151,157 @@ function NavBar() {
           width: '100%',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: 5,
+          justifyContent: 'space-between',
+          px: 2,
         }}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
-            <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Logo.jpg" alt="Logo" style={{ height: 54, marginRight: 20, borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} />
-          </a>
-          <Typography
-            variant="h5"
-            component="div"
-            sx={{
-              fontWeight: 800,
-              letterSpacing: 2,
-              color: '#fff',
-              fontFamily: 'Geist, sans-serif',
-              textShadow: '0 4px 16px rgba(0,0,0,0.18)',
-              mx: 1,
-              minWidth: '170px',
-              width: '170px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              overflow: 'hidden',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <span style={{ display: 'inline-block', textAlign: 'left', fontSize: '1.1em' }}>
-              {typedText}
-              <span style={{
-                display: 'inline-block',
-                width: '1ch',
-                background: 'none',
-                color: '#38ef7d',
-                fontWeight: 900,
-                fontSize: '1em',
-                marginLeft: '2px',
-                animation: 'blink 1s steps(1) infinite',
-                position: 'relative',
-                left: 0,
-              }}>|</span>
-            </span>
-          </Typography>
-          <style>{`
-            @keyframes blink {
-              0%, 50% { opacity: 1; }
-              51%, 100% { opacity: 0; }
-            }
-          `}</style>
-          <Button
-            variant="contained"
-            sx={{
-              background: 'linear-gradient(90deg, #ff512f 0%, #dd2476 100%)',
-              color: '#fff',
-              fontWeight: 700,
-              borderRadius: 22,
-              boxShadow: '0 4px 16px rgba(221,36,118,0.18)',
-              px: 3.5,
-              py: 1.2,
-              textTransform: 'none',
-              minWidth: 110,
-              fontSize: '1.08rem',
-              letterSpacing: 1,
-              transition: 'transform 0.18s',
-              '&:hover': {
-                background: 'linear-gradient(90deg, #dd2476 0%, #ff512f 100%)',
-                transform: 'scale(1.06)',
-              },
-            }}
-            onClick={() => window.location.href = '/'}
-          >Home</Button>
-          <Button
-            variant="contained"
-            sx={{
-              background: 'linear-gradient(90deg, #1e3c72 0%, #2a5298 100%)',
-              color: '#fff',
-              fontWeight: 700,
-              borderRadius: 22,
-              boxShadow: '0 4px 16px rgba(30,60,114,0.18)',
-              px: 3.5,
-              py: 1.2,
-              textTransform: 'none',
-              minWidth: 110,
-              fontSize: '1.08rem',
-              letterSpacing: 1,
-              transition: 'transform 0.18s',
-              '&:hover': {
-                background: 'linear-gradient(90deg, #2a5298 0%, #1e3c72 100%)',
-                transform: 'scale(1.06)',
-              },
-            }}
-            onClick={() => window.location.href = '/about-us'}
-          >About</Button>
-          <Button
-            variant="contained"
-            sx={{
-              background: 'linear-gradient(90deg, #11998e 0%, #38ef7d 100%)',
-              color: '#fff',
-              fontWeight: 700,
-              borderRadius: 22,
-              boxShadow: '0 4px 16px rgba(17,153,142,0.18)',
-              px: 3.5,
-              py: 1.2,
-              textTransform: 'none',
-              minWidth: 110,
-              fontSize: '1.08rem',
-              letterSpacing: 1,
-              transition: 'transform 0.18s',
-              '&:hover': {
-                background: 'linear-gradient(90deg, #38ef7d 0%, #11998e 100%)',
-                transform: 'scale(1.06)',
-              },
-            }}
-            onClick={() => window.location.href = '/'}
-          >Contact</Button>
+          <Box sx={{
+            display: { xs: 'flex', md: 'none' },
+          }}>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={() => setMobileOpen(true)}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          </Box>
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexGrow: 1,
+            justifyContent: { xs: 'center', md: 'flex-start' },
+            gap: { xs: 1, md: 3 },
+          }}>
+            <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
+              <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Logo.jpg" alt="Logo" style={{ height: { xs: 40, md: 54 }, borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} />
+            </Link>
+            <Typography
+              variant="h5"
+              component="div"
+              sx={{
+                fontWeight: 800,
+                letterSpacing: 2,
+                color: '#fff',
+                fontFamily: 'Geist, sans-serif',
+                textShadow: '0 4px 16px rgba(0,0,0,0.18)',
+                mx: 1,
+                minWidth: { xs: '120px', md: '170px' },
+                width: { xs: '120px', md: '170px' },
+                display: { xs: 'none', md: 'flex' },
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                fontSize: { xs: '1em', md: '1.1em' },
+              }}
+            >
+              <span style={{ display: 'inline-block', textAlign: 'left' }}>
+                {typedText}
+                <span style={{
+                  display: 'inline-block',
+                  width: '1ch',
+                  background: 'none',
+                  color: '#38ef7d',
+                  fontWeight: 900,
+                  fontSize: '1em',
+                  marginLeft: '2px',
+                  animation: 'blink 1s steps(1) infinite',
+                  position: 'relative',
+                  left: 0,
+                }}>|</span>
+              </span>
+            </Typography>
+          </Box>
+          <Box sx={{
+            display: { xs: 'none', md: 'flex' },
+            alignItems: 'center',
+            gap: 2,
+          }}>
             <Button
+              component={Link}
+              href="/"
               variant="contained"
+              startIcon={<HomeIcon />}
+              sx={{
+                background: 'linear-gradient(90deg, #ff512f 0%, #dd2476 100%)',
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: 22,
+                boxShadow: '0 4px 16px rgba(221,36,118,0.18)',
+                px: 3.5,
+                py: 1.2,
+                textTransform: 'none',
+                minWidth: 110,
+                fontSize: '1.08rem',
+                letterSpacing: 1,
+                transition: 'all 0.18s ease-in-out',
+                '&:hover': {
+                  background: 'linear-gradient(90deg, #dd2476 0%, #ff512f 100%)',
+                  transform: 'translateY(-2px) scale(1.06)',
+                },
+              }}
+            >
+              Home
+            </Button>
+            <Button
+              component={Link}
+              href="/pages/about-us"
+              variant="contained"
+              startIcon={<InfoIcon />}
+              sx={{
+                background: 'linear-gradient(90deg, #1e3c72 0%, #2a5298 100%)',
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: 22,
+                boxShadow: '0 4px 16px rgba(30,60,114,0.18)',
+                px: 3.5,
+                py: 1.2,
+                textTransform: 'none',
+                minWidth: 110,
+                fontSize: '1.08rem',
+                letterSpacing: 1,
+                transition: 'all 0.18s ease-in-out',
+                '&:hover': {
+                  background: 'linear-gradient(90deg, #2a5298 0%, #1e3c72 100%)',
+                  transform: 'translateY(-2px) scale(1.06)',
+                },
+              }}
+            >
+              About
+            </Button>
+            <Button
+              component={Link}
+              href="/pages/contact"
+              variant="contained"
+              startIcon={<ContactMailIcon />}
+              sx={{
+                background: 'linear-gradient(90deg, #11998e 0%, #38ef7d 100%)',
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: 22,
+                boxShadow: '0 4px 16px rgba(17,153,142,0.18)',
+                px: 3.5,
+                py: 1.2,
+                textTransform: 'none',
+                minWidth: 110,
+                fontSize: '1.08rem',
+                letterSpacing: 1,
+                transition: 'all 0.18s ease-in-out',
+                '&:hover': {
+                  background: 'linear-gradient(90deg, #38ef7d 0%, #11998e 100%)',
+                  transform: 'translateY(-2px) scale(1.06)',
+                },
+              }}
+            >
+              Contact
+            </Button>
+            <Button
+              component={Link}
+              href="/pages/manage_booking"
+              variant="contained"
+              startIcon={<EventNoteIcon />}
               sx={{
                 background: 'linear-gradient(90deg, #f7971e 0%, #ffd200 100%)',
                 color: '#232526',
@@ -264,29 +314,82 @@ function NavBar() {
                 minWidth: 150,
                 fontSize: '1.08rem',
                 letterSpacing: 1,
-                transition: 'transform 0.18s',
+                transition: 'all 0.18s ease-in-out',
                 '&:hover': {
                   background: 'linear-gradient(90deg, #ffd200 0%, #f7971e 100%)',
                   color: '#232526',
-                  transform: 'scale(1.06)',
+                  transform: 'translateY(-2px) scale(1.06)',
                 },
               }}
-              onClick={() => window.location.href = '/manage_booking'}
             >
               Manage Bookings
             </Button>
-          <Search>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Search tributes…"
-              inputProps={{ 'aria-label': 'search' }}
-              inputRef={searchRef}
-            />
-            <Box sx={{ ml: 1, color: '#bbb', fontSize: '1rem', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', px: 1.7, py: 0.8, borderRadius: 2.5, border: '1.5px solid #444', display: 'flex', alignItems: 'center', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.10)', letterSpacing: 1 }}>F</Box>
-          </Search>
+            <Search>
+              <SearchIconWrapper>
+                <SearchIcon />
+              </SearchIconWrapper>
+              <StyledInputBase
+                placeholder="Search tributes…"
+                inputProps={{ 'aria-label': 'search' }}
+                inputRef={searchRef}
+              />
+              <Box sx={{ ml: 1, color: '#bbb', fontSize: '1rem', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', px: 1.7, py: 0.8, borderRadius: 2.5, border: '1.5px solid #444', display: 'flex', alignItems: 'center', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.10)', letterSpacing: 1 }}>F</Box>
+            </Search>
+          </Box>
         </Box>
+        <Drawer
+          anchor="left"
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          sx={{
+            '& .MuiDrawer-paper': {
+              background: 'rgba(35,37,38,0.95)',
+              backdropFilter: 'blur(12px)',
+              color: '#fff',
+            },
+          }}
+        >
+          <List sx={{ width: 250 }}>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} href="/" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon sx={{ color: '#fff' }}>
+                  <HomeIcon />
+                </ListItemIcon>
+                <ListItemText primary="Home" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} href="/pages/about-us" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon sx={{ color: '#fff' }}>
+                  <InfoIcon />
+                </ListItemIcon>
+                <ListItemText primary="About" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} href="/pages/contact" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon sx={{ color: '#fff' }}>
+                  <ContactMailIcon />
+                </ListItemIcon>
+                <ListItemText primary="Contact" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} href="/pages/manage_booking" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon sx={{ color: '#fff' }}>
+                  <EventNoteIcon />
+                </ListItemIcon>
+                <ListItemText primary="Manage Bookings" />
+              </ListItemButton>
+            </ListItem>
+          </List>
+        </Drawer>
+        <style>{`
+          @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+          }
+        `}</style>
       </Toolbar>
     </AppBar>
   );

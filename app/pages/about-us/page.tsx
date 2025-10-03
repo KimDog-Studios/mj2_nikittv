@@ -12,9 +12,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 const members = [
-  { name: 'Alex "MJ" Turner', role: 'Lead Performer', bio: 'Stage presence and choreography inspired by the King of Pop.', avatar: '/Pic1.png' },
-  { name: 'Samantha Park', role: 'Vocal & Harmony', bio: 'Soulful vocals and harmonies for every tribute performance.', avatar: '/Pic2.png' },
-  { name: 'Tom Ellis', role: 'Music Director', bio: 'Live band direction and arrangements to recreate classic MJ sounds.', avatar: '/Logo.jpg' },
+  { name: 'Liam Paterson', role: 'Manager/Lead Dancer', bio: 'Founded the company and is the Main Dancer.', avatar: '/Pic1.png' },
+  { name: 'KimDog', role: 'Social Media Manager', bio: 'Handles all the Social Media and Website side of things.', avatar: 'https://raw.githubusercontent.com/KimDog-Studios/KimDog-Studios/main/KimDog.png' },
 ];
 
 const gallery = [
