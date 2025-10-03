@@ -112,7 +112,7 @@ function page() {
               <Typography sx={{ fontWeight: 600 }}>How long does it take to confirm my booking?</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Typography>We aim to confirm bookings within 24-48 hours. You'll receive an email confirmation once approved.</Typography>
+              <Typography>We aim to confirm bookings within 24-48 hours. You&apos;ll receive an email confirmation once approved.</Typography>
             </AccordionDetails>
           </Accordion>
           <Accordion sx={{ bgcolor: 'rgba(24,26,27,0.85)', backdropFilter: 'blur(15px)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', mb: 1 }}>
@@ -128,7 +128,7 @@ function page() {
               <Typography sx={{ fontWeight: 600 }}>What areas do you cover?</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Typography>We perform across South Wales, including Bridgend, Pontycymer, Sarn, and Maesteg. If your location isn't listed, contact us to discuss availability.</Typography>
+              <Typography>We perform across South Wales, including Bridgend, Pontycymer, Sarn, and Maesteg. If your location isn&apos;t listed, contact us to discuss availability.</Typography>
             </AccordionDetails>
           </Accordion>
           <Accordion sx={{ bgcolor: 'rgba(24,26,27,0.85)', backdropFilter: 'blur(15px)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', mb: 1 }}>
@@ -144,7 +144,7 @@ function page() {
               <Typography sx={{ fontWeight: 600 }}>What should I prepare for the show?</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Typography>Ensure the venue is ready with adequate space, sound equipment if needed, and parking. We'll discuss specifics during confirmation.</Typography>
+              <Typography>Ensure the venue is ready with adequate space, sound equipment if needed, and parking. We&apos;ll discuss specifics during confirmation.</Typography>
             </AccordionDetails>
           </Accordion>
         </Box>

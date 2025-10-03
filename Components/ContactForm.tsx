@@ -102,7 +102,7 @@ function ContactForm() {
       },
     }}>
       <Typography variant="h4" sx={{ fontWeight: 700, mb: 2, color: '#f9fafb', textAlign: 'center' }}>Contact Us</Typography>
-      <Typography variant="body1" sx={{ color: '#d1d5db', mb: 3, textAlign: 'center', lineHeight: 1.6 }}>Get in touch with us. We'll get back to you as soon as possible.</Typography>
+      <Typography variant="body1" sx={{ color: '#d1d5db', mb: 3, textAlign: 'center', lineHeight: 1.6 }}>Get in touch with us. We&apos;ll get back to you as soon as possible.</Typography>
       <Box sx={{ mb: 4, textAlign: 'center' }}>
         <Typography variant="h6" sx={{ color: '#f9fafb', mb: 1 }}>Contact Information</Typography>
         <Typography variant="body2" sx={{ color: '#d1d5db' }}>Email: coming soon</Typography>
@@ -142,7 +142,7 @@ function ContactForm() {
         <DialogTitle id="success-dialog-title">Message Sent Successfully</DialogTitle>
         <DialogContent>
           <DialogContentText id="success-dialog-description">
-            Thank you for contacting us. We'll get back to you soon.
+            Thank you for contacting us. We&apos;ll get back to you soon.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

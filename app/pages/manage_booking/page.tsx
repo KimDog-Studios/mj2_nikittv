@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import NavBar from '@/Components/NavBar';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import ManageBookings from '@/Components/BookingsForm';
