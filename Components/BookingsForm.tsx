@@ -735,7 +735,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
             {/* reCAPTCHA */}
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
               <ReCAPTCHA
-                sitekey="6Lfjh90rAAAAADxVFlFvbEzmxnDzWvMZB6wRtFdv"
+                sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
                 onChange={handleRecaptchaChange}
                 theme={theme.palette.mode === 'dark' ? 'dark' : 'light'}
               />
