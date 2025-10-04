@@ -27,15 +27,14 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import Fade from '@mui/material/Fade';
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, rtdb } from './firebaseClient';
-import { ref, push, set, get } from 'firebase/database';
-import Link from 'next/link';
+import { ref, push, set } from 'firebase/database';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
-import dayjs, { Dayjs } from 'dayjs';
+import { Dayjs } from 'dayjs';
 import { useTheme } from '@mui/material/styles';
 import ReCAPTCHA from 'react-google-recaptcha';
 import Stepper from '@mui/material/Stepper';
@@ -48,7 +47,6 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Checkbox from '@mui/material/Checkbox';
 import Slide from '@mui/material/Slide';
-import Grow from '@mui/material/Grow';
 
 const locations = ['Bridgend', 'Pontycymer', 'Sarn', 'Maesteg', 'Other'];
 
@@ -68,23 +66,6 @@ const packages: Package[] = [
 
 const steps = ['Choose Package', 'Your Details', 'Verify Email', 'Final Review'];
 
-function parseTime(value: any): Date | null {
-  if (!value) return null;
-  if (value?.toDate && typeof value.toDate === 'function') return value.toDate();
-  if (typeof value === 'number') return new Date(value);
-  if (typeof value === 'string') {
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) return d;
-    // try dd/mm/yyyy
-    const dmy = /^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/;
-    const m = value.match(dmy);
-    if (m) {
-      const [, dd, mm, yyyy] = m;
-      return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-    }
-  }
-  return null;
-}
 
 interface Package {
   id: string;
@@ -818,8 +799,8 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
       // Generate random booking ID
       const bookingId = 'MJ' + Math.random().toString(36).substring(2, 8).toUpperCase();
       // Simplified submission without conflict check for now
-      const { date, time, ...rest } = form;
-      const payload = { ...rest, date: isoDate, time: form.time?.format('HH:mm'), bookingId } as any;
+      const { ...rest } = form;
+      const payload = { ...rest, date: isoDate, time: form.time?.format('HH:mm'), bookingId };
       if (rtdb) {
         // write to Realtime Database under /bookings
         const bookingsRef = ref(rtdb, 'bookings');
@@ -899,9 +880,9 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
 
       setSubmissionError(null);
       window.location.href = '/pages/booking_status?bookingId=' + bookingId;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Booking submission error:', err);
-      const message = err?.message ? `Submission failed: ${err.message}` : 'Submission failed — check console for details.';
+      const message = err instanceof Error && err.message ? `Submission failed: ${err.message}` : 'Submission failed — check console for details.';
       setSubmissionError(message);
       setSnackMsg(message);
       setSnackSeverity('error');

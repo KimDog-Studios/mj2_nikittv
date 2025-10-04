@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -8,7 +9,6 @@ import Tooltip from '@mui/material/Tooltip';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import { MusicNote, Star, TheaterComedy } from '@mui/icons-material';
-import { motion } from "framer-motion";
 import { TypeAnimation } from 'react-type-animation';
 
 const openingTimes = [
@@ -59,10 +59,6 @@ function getCurrentTimeParts() {
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 
-function secsUntil(targetH: number, targetM: number, now: Date) {
-  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetH, targetM, 0);
-  return Math.max(0, Math.floor((target.getTime() - now.getTime()) / 1000));
-}
 
 function formatHMS(totalSeconds: number) {
   const h = Math.floor(totalSeconds / 3600);
@@ -193,11 +189,11 @@ function HomePage() {
           Professional tribute acts and bookings across South Wales. Browse our areas covered, opening times, and manage your bookings from the navigation above.
         </Typography>
         <Box sx={{ display: 'flex', gap: {xs: 1, sm: 2}, mt: 3, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Box sx={{ width: {xs: 120, sm: 160}, height: 'auto', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
-            <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pic1.png" alt="Pic1" style={{ width: '100%', height: 'auto' }} />
+          <Box sx={{ width: {xs: 120, sm: 160}, height: 120, borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', overflow: 'hidden', position: 'relative' }}>
+            <Image src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pic1.png" alt="Pic1" fill objectFit="cover" />
           </Box>
-          <Box sx={{ width: {xs: 120, sm: 160}, height: 'auto', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
-            <img src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pic2.png" alt="Pic2" style={{ width: '100%', height: 'auto' }} />
+          <Box sx={{ width: {xs: 120, sm: 160}, height: 120, borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', overflow: 'hidden', position: 'relative' }}>
+            <Image src="https://raw.githubusercontent.com/KimDog-Studios/mj2_nikittv/main/app/Pic2.png" alt="Pic2" fill objectFit="cover" />
           </Box>
           <Box sx={{ width: {xs: '90%', sm: 360}, height: {xs: 200, sm: 280}, borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
             <iframe
@@ -637,13 +633,12 @@ function HomePage() {
                           pointerEvents: 'none',
                         },
                       }}>
-                        <img
+                        <Image
                           src={place.image}
                           alt={place.name}
+                          fill
+                          objectFit="cover"
                           style={{
-                            width: '100%',
-                            height: '140px',
-                            objectFit: 'cover',
                             filter: 'brightness(0.9) contrast(1.1) saturate(1.2)',
                             transition: 'transform 0.3s ease',
                           }}

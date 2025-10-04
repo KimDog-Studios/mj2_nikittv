@@ -68,7 +68,7 @@ type Booking = {
   date?: string;
   time?: string;
   message?: string;
-  createdAt?: any;
+  createdAt?: string;
   status?: 'pending' | 'confirmed' | 'cancelled';
   adminNotes?: string;
 };
@@ -80,6 +80,28 @@ type Show = {
   end?: Date;
   venue?: string;
   description?: string;
+};
+
+type RTDBShow = {
+  title: string;
+  start: string;
+  end?: string;
+  venue?: string;
+  description?: string;
+};
+
+type FirestoreShow = {
+  title: string;
+  start: { seconds: number; nanoseconds: number };
+  end?: { seconds: number; nanoseconds: number };
+  venue?: string;
+  description?: string;
+};
+
+type DBMessage = {
+  sender: 'user' | 'admin';
+  message: string;
+  timestamp: number;
 };
 
 type Message = {
@@ -131,11 +153,11 @@ export default function BookingsAdmin() {
         const bookingsRef = rref(rtdb, 'bookings');
         const unsub = onValue(bookingsRef, (snapshot) => {
           const val = snapshot.val() || {};
-          const items: Booking[] = Object.entries(val).map(([k, v]: any) => ({ id: k, ...v }));
-          setBookings(items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+          const items: Booking[] = Object.entries(val).map(([k, v]) => ({ ...(v as Omit<Booking, 'id'>), id: k }));
+          setBookings(items.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0)));
           setLoading(false);
         }, (err) => {
-          setError(err?.message || 'RTDB read error');
+          setError((err as Error)?.message || 'RTDB read error');
           setLoading(false);
         });
         return unsub;
@@ -146,7 +168,7 @@ export default function BookingsAdmin() {
           setBookings(items);
           setLoading(false);
         }, (err) => {
-          setError(err?.message || 'Firestore read error');
+          setError((err as Error)?.message || 'Firestore read error');
           setLoading(false);
         });
         return unsub;
@@ -159,13 +181,13 @@ export default function BookingsAdmin() {
         const showsRef = rref(rtdb, 'shows');
         const unsub = onValue(showsRef, (snapshot) => {
           const val = snapshot.val() || {};
-          const items: Show[] = Object.entries(val).map(([k, v]: any) => ({
+          const items: Show[] = Object.entries(val).map(([k, v]) => ({
             id: k,
-            title: v.title,
-            start: new Date(v.start),
-            end: v.end ? new Date(v.end) : undefined,
-            venue: v.venue,
-            description: v.description
+            title: (v as RTDBShow).title,
+            start: new Date((v as RTDBShow).start),
+            end: (v as RTDBShow).end ? new Date((v as RTDBShow).end!) : undefined,
+            venue: (v as RTDBShow).venue,
+            description: (v as RTDBShow).description
           }));
           setShows(items);
         }, (err) => console.error('Shows fetch error', err));
@@ -174,7 +196,7 @@ export default function BookingsAdmin() {
         const q = query(collection(db, 'shows'), orderBy('start'));
         const unsub = onSnapshot(q, (snap) => {
           const items: Show[] = snap.docs.map((d) => {
-            const data = d.data() as any;
+            const data = d.data() as FirestoreShow;
             return {
               id: d.id,
               title: data.title,
@@ -217,9 +239,9 @@ export default function BookingsAdmin() {
     const unsubscribe = onValue(chatRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const msgs = Object.entries(data).map(([id, msg]: [string, any]) => ({
+        const msgs = Object.entries(data).map(([id, msg]) => ({
           id,
-          ...msg
+          ...(msg as DBMessage)
         })).sort((a, b) => a.timestamp - b.timestamp);
         setChatMessages(msgs);
       } else {
@@ -228,7 +250,7 @@ export default function BookingsAdmin() {
     });
 
     return unsubscribe;
-  }, [viewOpen, selectedForView, rtdb]);
+  }, [viewOpen, selectedForView]);
 
   const handleView = (b: Booking) => {
     console.log('Viewing booking:', b);
@@ -254,9 +276,9 @@ export default function BookingsAdmin() {
       setSnack({ open: true, message: 'Deleted', severity: 'success' });
       setDeleteDialogOpen(false);
       setBookingToDelete(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setSnack({ open: true, message: err?.message ?? 'Delete failed', severity: 'error' });
+      setSnack({ open: true, message: (err as Error)?.message ?? 'Delete failed', severity: 'error' });
     }
   };
 
@@ -287,12 +309,13 @@ export default function BookingsAdmin() {
     const nextStatus = statuses[(currentIndex + 1) % statuses.length];
 
     try {
-      const payload: any = { ...booking, status: nextStatus };
-      delete payload.id;
+      const payload = { ...booking };
+      delete (payload as any).id;
+      const updatePayload = { ...payload, status: nextStatus };
       if (rtdb) {
-        await rtdbUpdate(rref(rtdb, `bookings/${booking.id}`), payload);
+        await rtdbUpdate(rref(rtdb, `bookings/${booking.id}`), updatePayload);
       } else {
-        await updateDoc(doc(db, 'bookings', booking.id), payload);
+        await updateDoc(doc(db, 'bookings', booking.id), updatePayload);
       }
 
       // Send status update email if email exists
@@ -368,9 +391,9 @@ export default function BookingsAdmin() {
       }
 
       setSnack({ open: true, message: `Status updated to ${nextStatus}${emailSent ? ' - Email sent' : ''}`, severity: 'success' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setSnack({ open: true, message: err?.message ?? 'Update failed', severity: 'error' });
+      setSnack({ open: true, message: (err as Error)?.message ?? 'Update failed', severity: 'error' });
     }
   };
 
@@ -395,12 +418,12 @@ export default function BookingsAdmin() {
       for (const id of selectedBookings) {
         const booking = bookings.find(b => b.id === id);
         if (booking) {
-          const payload: any = { ...booking, status };
-          delete payload.id;
+          const { id, ...payload } = booking;
+          const updatePayload = { ...payload, status };
           if (rtdb) {
-            await rtdbUpdate(rref(rtdb, `bookings/${id}`), payload);
+            await rtdbUpdate(rref(rtdb, `bookings/${id}`), updatePayload);
           } else {
-            await updateDoc(doc(db, 'bookings', id), payload);
+            await updateDoc(doc(db, 'bookings', id), updatePayload);
           }
 
           // Send status update email if email exists and status is not pending
@@ -472,8 +495,8 @@ export default function BookingsAdmin() {
       }
       setSelectedBookings([]);
       setSnack({ open: true, message: `Bulk status updated to ${status}`, severity: 'success' });
-    } catch (err: any) {
-      setSnack({ open: true, message: err?.message ?? 'Bulk update failed', severity: 'error' });
+    } catch (err: unknown) {
+      setSnack({ open: true, message: (err as Error)?.message ?? 'Bulk update failed', severity: 'error' });
     }
   };
 
@@ -488,8 +511,8 @@ export default function BookingsAdmin() {
       }
       setSelectedBookings([]);
       setSnack({ open: true, message: 'Bulk deleted', severity: 'success' });
-    } catch (err: any) {
-      setSnack({ open: true, message: err?.message ?? 'Bulk delete failed', severity: 'error' });
+    } catch (err: unknown) {
+      setSnack({ open: true, message: (err as Error)?.message ?? 'Bulk delete failed', severity: 'error' });
     }
   };
 
@@ -523,18 +546,19 @@ export default function BookingsAdmin() {
     }
     setSaving(true);
     try {
-      const payload = { ...selected, status: selected.status || 'pending' } as any;
-      delete payload.id;
+      const payload = { ...selected };
+      delete (payload as any).id;
+      const updatePayload = { ...payload, status: selected.status || 'pending' };
       if (rtdb) {
-        await rtdbUpdate(rref(rtdb, `bookings/${selected.id}`), payload);
+        await rtdbUpdate(rref(rtdb, `bookings/${selected.id}`), updatePayload);
       } else {
-        await updateDoc(doc(db, 'bookings', selected.id), payload);
+        await updateDoc(doc(db, 'bookings', selected.id), updatePayload);
       }
       setEditOpen(false);
       setSnack({ open: true, message: 'Saved', severity: 'success' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setSnack({ open: true, message: err?.message ?? 'Save failed', severity: 'error' });
+      setSnack({ open: true, message: (err as Error)?.message ?? 'Save failed', severity: 'error' });
     } finally {
       setSaving(false);
     }
@@ -564,7 +588,7 @@ export default function BookingsAdmin() {
 
   // Sort bookings
   const sortedBookings = filteredBookings.sort((a, b) => {
-    let aValue: any, bValue: any;
+    let aValue: string | number, bValue: string | number;
 
     switch (sortField) {
       case 'name':
@@ -576,8 +600,8 @@ export default function BookingsAdmin() {
         bValue = b.email?.toLowerCase() || '';
         break;
       case 'date':
-        aValue = new Date(a.date || '1970-01-01');
-        bValue = new Date(b.date || '1970-01-01');
+        aValue = new Date(a.date || '1970-01-01').getTime();
+        bValue = new Date(b.date || '1970-01-01').getTime();
         break;
       case 'status':
         aValue = a.status || 'pending';
@@ -585,8 +609,8 @@ export default function BookingsAdmin() {
         break;
       case 'createdAt':
       default:
-        aValue = typeof a.createdAt === 'number' ? a.createdAt : (a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0);
-        bValue = typeof b.createdAt === 'number' ? b.createdAt : (b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0);
+        aValue = typeof a.createdAt === 'number' ? a.createdAt : ((a.createdAt as any)?.toDate ? (a.createdAt as any).toDate().getTime() : 0);
+        bValue = typeof b.createdAt === 'number' ? b.createdAt : ((b.createdAt as any)?.toDate ? (b.createdAt as any).toDate().getTime() : 0);
         break;
     }
 
@@ -631,7 +655,7 @@ export default function BookingsAdmin() {
         b.date || '',
         b.status || 'pending',
         b.message || '',
-        b.createdAt ? (typeof b.createdAt === 'number' ? new Date(b.createdAt).toISOString() : (b.createdAt?.toDate ? b.createdAt.toDate().toISOString() : String(b.createdAt))) : ''
+        b.createdAt ? (typeof b.createdAt === 'number' ? new Date(b.createdAt).toISOString() : ((b.createdAt as any)?.toDate ? (b.createdAt as any).toDate().toISOString() : String(b.createdAt))) : ''
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -847,7 +871,7 @@ export default function BookingsAdmin() {
                         {b.status || 'pending'}
                       </Typography>
                     </TableCell>
-                    <TableCell sx={{ color: '#ffffff' }}>{b.createdAt ? (typeof b.createdAt === 'number' ? (mounted ? new Date(b.createdAt).toLocaleString() : new Date(b.createdAt).toISOString()) : (b.createdAt?.toDate ? (mounted ? b.createdAt.toDate().toLocaleString() : b.createdAt.toDate().toISOString()) : String(b.createdAt))) : ''}</TableCell>
+                    <TableCell sx={{ color: '#ffffff' }}>{b.createdAt ? (typeof b.createdAt === 'number' ? (mounted ? new Date(b.createdAt).toLocaleString() : new Date(b.createdAt).toISOString()) : ((b.createdAt as any)?.toDate ? (mounted ? (b.createdAt as any).toDate().toLocaleString() : (b.createdAt as any).toDate().toISOString()) : String(b.createdAt))) : ''}</TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => handleView(b)} color="info" title="View details" sx={{ mr: 1 }}>
                         <VisibilityIcon />
@@ -1083,7 +1107,7 @@ export default function BookingsAdmin() {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <ScheduleIcon sx={{ mr: 1, color: '#e0e0e0' }} />
                 <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 500 }}>
-                  Created: {selectedForView.createdAt ? (typeof selectedForView.createdAt === 'number' ? (mounted ? new Date(selectedForView.createdAt).toLocaleString() : new Date(selectedForView.createdAt).toISOString()) : (selectedForView.createdAt?.toDate ? (mounted ? selectedForView.createdAt.toDate().toLocaleString() : selectedForView.createdAt.toDate().toISOString()) : String(selectedForView.createdAt))) : ''}
+                  Created: {selectedForView.createdAt ? (typeof selectedForView.createdAt === 'number' ? (mounted ? new Date(selectedForView.createdAt).toLocaleString() : new Date(selectedForView.createdAt).toISOString()) : ((selectedForView.createdAt as any)?.toDate ? (mounted ? (selectedForView.createdAt as any).toDate().toLocaleString() : (selectedForView.createdAt as any).toDate().toISOString()) : String(selectedForView.createdAt))) : ''}
                 </Typography>
               </Box>
               {selectedForView.bookingId && (

@@ -72,9 +72,9 @@ function ContactForm() {
       await addDoc(collection(db, 'contacts'), { ...form, createdAt: serverTimestamp() });
       setSubmissionError(null);
       setOpenDialog(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Contact submission error:', err);
-      const message = err?.message ? `Submission failed: ${err.message}` : 'Submission failed — check console for details.';
+      const message = err instanceof Error && err.message ? `Submission failed: ${err.message}` : 'Submission failed — check console for details.';
       setSubmissionError(message);
       setSnackMsg(message);
       setSnackSeverity('error');

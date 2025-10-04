@@ -32,7 +32,7 @@ try {
   if (typeof window !== 'undefined') {
     analytics = getAnalytics(app);
   }
-} catch (err) {
+} catch {
   // Non-fatal: analytics isn't critical and may not be supported in some envs
   analytics = undefined;
 }
@@ -48,7 +48,7 @@ const dbUrl = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ?? firebaseConfig.da
 if (dbUrl) {
   try {
     _rtdb = getDatabase(app, dbUrl);
-  } catch (err) {
+  } catch {
     // leave _rtdb null on failure; callers should handle fallback
     _rtdb = null;
   }

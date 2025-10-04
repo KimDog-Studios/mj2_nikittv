@@ -13,7 +13,6 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
 import Button from '@mui/material/Button';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -25,7 +24,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import { db, rtdb } from './firebaseClient';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { ref as rref, onValue } from 'firebase/database';
+import { ref as rref, onValue, DataSnapshot } from 'firebase/database';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -41,9 +40,9 @@ type Show = {
   description?: string;
 };
 
-function parseTime(value: any): Date | null {
+function parseTime(value: unknown): Date | null {
   if (!value) return null;
-  if (value?.toDate && typeof value.toDate === 'function') return value.toDate();
+  if (value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') return (value as { toDate: () => Date }).toDate();
   if (typeof value === 'number') return new Date(value);
   if (typeof value === 'string') {
     // Prefer parsing ISO date/time strings into local Date components to avoid timezone shifts
@@ -110,7 +109,7 @@ export default function ShowsCalendar() {
     let unsubShows: (() => void) | null = null;
     let unsubBookings: (() => void) | null = null;
 
-    function normalizeDateToISO(dateStr: any) {
+    function normalizeDateToISO(dateStr: unknown) {
         if (!dateStr) return '';
         if (typeof dateStr !== 'string') return '';
         // YYYY-MM-DD
@@ -150,36 +149,36 @@ export default function ShowsCalendar() {
       let latestShows: Show[] = [];
       let latestBookings: Show[] = [];
 
-      unsubShows = onValue(showsRef, (snap: any) => {
+      unsubShows = onValue(showsRef, (snap: DataSnapshot) => {
         const val = snap.val() || {};
-        latestShows = Object.entries(val).map(([k, v]: any) => {
-          const s = parseTime(v.start) ?? new Date();
-          const e = parseTime(v.end) ?? null;
-          return { id: k, title: v.title ?? 'Show', start: s, end: e, venue: v.venue, description: v.description } as Show;
+        latestShows = Object.entries(val).map(([k, v]) => {
+          const s = parseTime((v as any).start) ?? new Date();
+          const e = parseTime((v as any).end) ?? null;
+          return { id: k, title: (v as any).title ?? 'Show', start: s, end: e, venue: (v as any).venue, description: (v as any).description } as Show;
         });
         mergeAndSet(latestShows, latestBookings);
-      }, (err: any) => setError(err?.message ?? 'RTDB shows error')) as any;
+      }, (err: unknown) => setError(err instanceof Error && err.message ? err.message : 'RTDB shows error'));
 
-      unsubBookings = onValue(bookingsRef, (snap: any) => {
+      unsubBookings = onValue(bookingsRef, (snap: DataSnapshot) => {
         const val = snap.val() || {};
-        latestBookings = Object.entries(val).map(([k, v]: any) => {
+        latestBookings = Object.entries(val).map(([k, v]) => {
           // build a start Date from booking.date + booking.time when available using numeric parts (local time)
-          const dateISO = normalizeDateToISO(v.date || '');
-          let start = parseTime(v.createdAt) ?? new Date();
+          const dateISO = normalizeDateToISO((v as any).date || '');
+          let start = parseTime((v as any).createdAt) ?? new Date();
           if (dateISO) {
             const [yy, mm, dd] = dateISO.split('-').map(Number);
-            if (v.time) {
-              const [hh, min] = (v.time || '00:00').split(':').map(Number);
+            if ((v as any).time) {
+              const [hh, min] = ((v as any).time || '00:00').split(':').map(Number);
               const dt = new Date(yy, mm - 1, dd, hh || 0, min || 0, 0);
               if (!isNaN(dt.getTime())) start = dt;
             } else {
               start = new Date(yy, mm - 1, dd, 0, 0, 0);
             }
           }
-          return { id: `booking-${k}`, title: v.name ?? v.location ?? 'Booking', start, end: null, venue: v.location, description: v.message } as Show;
+          return { id: `booking-${k}`, title: (v as any).name ?? (v as any).location ?? 'Booking', start, end: null, venue: (v as any).location, description: (v as any).message } as Show;
         });
         mergeAndSet(latestShows, latestBookings);
-      }, (err: any) => setError(err?.message ?? 'RTDB bookings error')) as any;
+      }, (err: unknown) => setError(err instanceof Error && err.message ? err.message : 'RTDB bookings error'));
     } else {
       try {
         const qShows = query(collection(db, 'shows'), orderBy('start'));
@@ -189,7 +188,7 @@ export default function ShowsCalendar() {
 
         unsubShows = onSnapshot(qShows, (snap) => {
           latestShows = snap.docs.map((d) => {
-            const data: any = d.data();
+            const data = d.data() as Record<string, unknown>;
             const s = parseTime(data.start) ?? new Date();
             const e = parseTime(data.end) ?? null;
             return { id: d.id, title: data.title ?? 'Show', start: s, end: e, venue: data.venue, description: data.description } as Show;
@@ -199,13 +198,14 @@ export default function ShowsCalendar() {
 
         unsubBookings = onSnapshot(qBookings, (snap) => {
           latestBookings = snap.docs.map((d) => {
-            const data: any = d.data();
+            const data = d.data() as Record<string, unknown>;
             const dateISO = normalizeDateToISO(data.date || '');
             let start = parseTime(data.createdAt) ?? new Date();
             if (dateISO) {
               const [yy, mm, dd] = dateISO.split('-').map(Number);
               if (data.time) {
-                const [hh, min] = (data.time || '00:00').split(':').map(Number);
+                const timeStr = typeof data.time === 'string' ? data.time : '00:00';
+                const [hh, min] = (timeStr || '00:00').split(':').map(Number);
                 const dt = new Date(yy, mm - 1, dd, hh || 0, min || 0, 0);
                 if (!isNaN(dt.getTime())) start = dt;
               } else {
@@ -216,8 +216,8 @@ export default function ShowsCalendar() {
           });
           mergeAndSet(latestShows, latestBookings);
         }, (err) => setError(err?.message ?? 'Firestore bookings error'));
-      } catch (err: any) {
-        setError(err?.message ?? 'Shows/Bookings read error');
+      } catch (err: unknown) {
+        setError(err instanceof Error && err.message ? err.message : 'Shows/Bookings read error');
       }
     }
 
@@ -247,7 +247,7 @@ export default function ShowsCalendar() {
     const sDate = s.start;
     const eDate = s.end ?? s.start;
     // iterate days from sDate to eDate inclusive
-    let cursor = new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate());
+    const cursor = new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate());
     const end = new Date(eDate.getFullYear(), eDate.getMonth(), eDate.getDate());
     while (cursor <= end) {
       const key = formatKey(cursor);
@@ -277,7 +277,7 @@ export default function ShowsCalendar() {
 
   const openDay = (key: string) => {
     // client-side debug: log the selected key and how many entries exist in the map
-    try { console.debug('openDay', key, 'mapCount', Object.keys(map).length, 'itemsForDay', (map[key] || []).length); } catch (e) {}
+    console.debug('openDay', key, 'mapCount', Object.keys(map).length, 'itemsForDay', (map[key] || []).length);
     setSelectedDay(key);
     setDayDialogOpen(true);
   };

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -21,12 +21,10 @@ import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
-import ManageBookings from '@/Components/BookingsForm';
 import BookingsAdmin from '@/Components/BookingsAdmin';
 import ShowsCalendar from '@/Components/ShowsCalendar';
-import EmailSystem from '@/Components/EmailSystem';
 import { auth, db, rtdb } from '@/Components/firebaseClient';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, signInWithPopup, GoogleAuthProvider, GithubAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, signInWithPopup, GoogleAuthProvider, GithubAuthProvider, FacebookAuthProvider, OAuthProvider, User } from 'firebase/auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { ref, onValue, push, set } from 'firebase/database';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -44,7 +42,7 @@ type Booking = {
   date?: string;
   time?: string;
   message?: string;
-  createdAt?: any;
+  createdAt?: string;
   status?: 'pending' | 'confirmed' | 'cancelled';
 };
 
@@ -55,9 +53,15 @@ type Message = {
   timestamp: number;
 };
 
+interface DBMessage {
+  sender: 'user' | 'admin';
+  message: string;
+  timestamp: number;
+}
+
 export default function ManageBookingPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -70,13 +74,11 @@ export default function ManageBookingPage() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [newChatMessage, setNewChatMessage] = useState('');
   const [snack, setSnack] = useState<{ open: boolean; message: string; severity?: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // OAuth Providers
   const googleProvider = new GoogleAuthProvider();
   const githubProvider = new GithubAuthProvider();
   const facebookProvider = new FacebookAuthProvider();
-  const microsoftProvider = new OAuthProvider('microsoft.com');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -97,7 +99,7 @@ export default function ManageBookingPage() {
       unsub();
       clearTimeout(timer);
     };
-  }, []);
+  }, [loading]);
 
   useEffect(() => {
     if (user && user.email !== 'admin@mj2-studios.co.uk') {
@@ -107,7 +109,7 @@ export default function ManageBookingPage() {
           const bookingsRef = ref(rtdb, 'bookings');
           const unsub = onValue(bookingsRef, (snapshot) => {
             const val = snapshot.val() || {};
-            const items: Booking[] = Object.entries(val).map(([k, v]: any) => ({ id: k, ...v })).filter(b => b.email === user.email);
+            const items: Booking[] = Object.entries(val).map(([k, v]) => ({ ...(v as Booking), id: k })).filter(b => b.email === user.email);
             setUserBookings(items);
           });
           return unsub;
@@ -133,9 +135,9 @@ export default function ManageBookingPage() {
     const unsubscribe = onValue(chatRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const msgs = Object.entries(data).map(([id, msg]: [string, any]) => ({
+        const msgs = Object.entries(data).map(([id, msg]) => ({
           id,
-          ...msg
+          ...(msg as DBMessage)
         })).sort((a, b) => a.timestamp - b.timestamp);
         setChatMessages(msgs);
       } else {
@@ -155,8 +157,8 @@ export default function ManageBookingPage() {
         await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
         setSnack({ open: true, message: 'Logged in successfully!', severity: 'success' });
       }
-    } catch (err: any) {
-      setSnack({ open: true, message: err.message, severity: 'error' });
+    } catch (err: unknown) {
+      setSnack({ open: true, message: err instanceof Error ? err.message : String(err), severity: 'error' });
     }
   };
 
@@ -170,12 +172,12 @@ export default function ManageBookingPage() {
     }
   };
 
-  const handleSocialLogin = async (provider: any) => {
+  const handleSocialLogin = async (provider: OAuthProvider | GoogleAuthProvider | GithubAuthProvider | FacebookAuthProvider) => {
     try {
       await signInWithPopup(auth, provider);
       setSnack({ open: true, message: 'Logged in successfully!', severity: 'success' });
-    } catch (err: any) {
-      setSnack({ open: true, message: err.message, severity: 'error' });
+    } catch (err: unknown) {
+      setSnack({ open: true, message: err instanceof Error ? err.message : String(err), severity: 'error' });
     }
   };
 
@@ -187,7 +189,7 @@ export default function ManageBookingPage() {
   };
 
   const sendChatMessage = async () => {
-    if (!newChatMessage.trim() || !selectedBooking || !rtdb) return;
+    if (!newChatMessage.trim() || !selectedBooking || !rtdb || !user) return;
 
     const chatRef = ref(rtdb, `chats/${selectedBooking.bookingId || selectedBooking.id}/messages`);
     const newMsgRef = push(chatRef);

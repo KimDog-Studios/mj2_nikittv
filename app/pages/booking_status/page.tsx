@@ -37,6 +37,12 @@ interface BookingData {
   createdAt: number;
 }
 
+interface DBMessage {
+  sender: 'user' | 'admin';
+  message: string;
+  timestamp: number;
+}
+
 function BookingStatusPage() {
   const theme = useTheme();
   const [bookingId, setBookingId] = useState<string | null>(null);
@@ -102,9 +108,9 @@ function BookingStatusPage() {
     const unsubscribe = onValue(chatRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const msgs = Object.entries(data).map(([id, msg]: [string, any]) => ({
+        const msgs = Object.entries(data).map(([id, msg]) => ({
           id,
-          ...msg
+          ...(msg as DBMessage)
         })).sort((a, b) => a.timestamp - b.timestamp);
         setMessages(msgs);
         // Scroll to bottom
