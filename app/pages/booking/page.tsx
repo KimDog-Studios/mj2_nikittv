@@ -1,6 +1,6 @@
 "use client";
 import { BookingForm } from '@/Components/Booking/Form'
-import React from 'react'
+import React, { Suspense } from 'react'
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Accordion from '@mui/material/Accordion';
@@ -104,7 +104,9 @@ function page() {
         animation: 'fadeInUp 1.2s ease-out 0.5s both',
         borderRadius: '20px',
       }}>
-        <BookingForm />
+        <Suspense fallback={<div>Loading...</div>}>
+          <BookingForm />
+        </Suspense>
         <Box sx={{
           position: 'absolute',
           top: 0,

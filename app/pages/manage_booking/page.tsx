@@ -12,7 +12,6 @@ import Tab from '@mui/material/Tab';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Dialog from '@mui/material/Dialog';
@@ -25,7 +24,7 @@ import Alert from '@mui/material/Alert';
 import BookingsAdmin from '@/Components/Booking/Admin';
 import ShowsCalendar from '@/Components/Calendar';
 import { auth, db, rtdb } from '@/Components/Utils/firebaseClient';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, signInWithPopup, GoogleAuthProvider, GithubAuthProvider, FacebookAuthProvider, OAuthProvider, User } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { ref, onValue, push, set } from 'firebase/database';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -130,8 +129,6 @@ export default function ManageBookingPage() {
 
   // OAuth Providers
   const googleProvider = new GoogleAuthProvider();
-  const githubProvider = new GithubAuthProvider();
-  const facebookProvider = new FacebookAuthProvider();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -295,7 +292,7 @@ export default function ManageBookingPage() {
     }
   };
 
-  const handleSocialLogin = async (provider: OAuthProvider | GoogleAuthProvider | GithubAuthProvider | FacebookAuthProvider) => {
+  const handleSocialLogin = async (provider: GoogleAuthProvider) => {
     try {
       await signInWithPopup(auth, provider);
       setSnack({ open: true, message: 'Logged in successfully!', severity: 'success' });
