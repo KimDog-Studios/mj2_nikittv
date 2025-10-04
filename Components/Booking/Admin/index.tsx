@@ -50,12 +50,25 @@ import InputLabel from '@mui/material/InputLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import { motion } from 'framer-motion';
 
-import { db, rtdb } from './firebaseClient';
+// Sound configurations
+const sounds = {
+  newBooking: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
+  editSaved: "https://www.soundjay.com/misc/sounds/applause.wav",
+  deleteAction: "https://www.soundjay.com/misc/sounds/error.wav",
+  statusChange: "https://www.soundjay.com/misc/sounds/click.wav",
+};
+
+const playSound = (url: string) => {
+  const audio = new Audio(url);
+  audio.play().catch(err => console.log('Audio play failed:', err));
+};
+
+import { db, rtdb } from '../../Utils/firebaseClient';
 // Firestore
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 // Realtime DB
 import { ref as rref, onValue, update as rtdbUpdate, remove as rtdbRemove, push, set } from 'firebase/database';
-// Removed Resend email service import
+import { EmailTemplates, BookingData } from '../../Email';
 
 type Booking = {
   id: string;
@@ -139,7 +152,6 @@ export default function BookingsAdmin() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [newChatMessage, setNewChatMessage] = useState('');
   const [chatTab, setChatTab] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousLengthRef = useRef(0);
 
   useEffect(() => {
@@ -222,14 +234,12 @@ export default function BookingsAdmin() {
   }, []);
 
   // Play sound on new booking
-  useEffect(() => {
-    if (bookings.length > previousLengthRef.current && previousLengthRef.current > 0) {
-      if (audioRef.current) {
-        audioRef.current.play().catch(err => console.log('Audio play failed:', err));
-      }
-    }
-    previousLengthRef.current = bookings.length;
-  }, [bookings]);
+   useEffect(() => {
+     if (bookings.length > previousLengthRef.current && previousLengthRef.current > 0) {
+       playSound(sounds.newBooking);
+     }
+     previousLengthRef.current = bookings.length;
+   }, [bookings]);
 
   // Chat listener
   useEffect(() => {
@@ -274,6 +284,7 @@ export default function BookingsAdmin() {
         await deleteDoc(doc(db, 'bookings', bookingToDelete.id));
       }
       setSnack({ open: true, message: 'Deleted', severity: 'success' });
+      playSound(sounds.deleteAction);
       setDeleteDialogOpen(false);
       setBookingToDelete(null);
     } catch (err: unknown) {
@@ -322,75 +333,25 @@ export default function BookingsAdmin() {
       let emailSent = false;
       if (booking.email && nextStatus !== 'pending') {
         try {
-          const subject = nextStatus === 'confirmed' ? 'Booking Confirmed - MJ2 Studios' : 'Booking Update - MJ2 Studios';
-          const statusMessage = nextStatus === 'confirmed' ? 'great news! Your booking has been confirmed.' : 'we regret to inform you that your booking has been cancelled.';
-          const emailBody = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>${subject}</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: ${nextStatus === 'confirmed' ? '#4caf50' : '#f44336'}; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
-        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>MJ2 Studios</h1>
-            <p>Michael Jackson Tributes</p>
-        </div>
-        <div class="content">
-            <h2>Booking Status Update</h2>
-            <p>Dear ${booking.name},</p>
-            <p>We have an update regarding your booking. ${statusMessage}</p>
-            <p><strong>Booking Details:</strong></p>
-            <ul>
-                <li><strong>Name:</strong> ${booking.name}</li>
-                <li><strong>Email:</strong> ${booking.email}</li>
-                ${booking.phone ? `<li><strong>Phone:</strong> ${booking.phone}</li>` : ''}
-                ${booking.location ? `<li><strong>Location:</strong> ${booking.location}</li>` : ''}
-                ${booking.venue ? `<li><strong>Venue:</strong> ${booking.venue}</li>` : ''}
-                ${booking.date ? `<li><strong>Date:</strong> ${booking.date}</li>` : ''}
-                ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
-            </ul>
-            <p><strong>Status:</strong> ${nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}</p>
-            ${nextStatus === 'confirmed' ? '<p>We look forward to performing for you!</p>' : '<p>If you have any questions, please contact us.</p>'}
-            <p>Best regards,<br>The MJ2 Studios Team</p>
-        </div>
-        <div class="footer">
-            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
-            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
-        </div>
-    </div>
-</body>
-</html>
-          `;
-          const response = await fetch('/api/send-email', {
+          const htmlBody = EmailTemplates.getStatusUpdateHtml({ ...booking, email: booking.email }, nextStatus as 'confirmed' | 'cancelled');
+          await fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               to: booking.email,
-              subject,
-              body: emailBody
+              subject: nextStatus === 'confirmed' ? 'Booking Confirmed - MJ2 Studios' : 'Booking Update - MJ2 Studios',
+              body: htmlBody
             }),
           });
-          if (response.ok) {
-            emailSent = true;
-            console.log('Status update email sent successfully');
-          } else {
-            console.error('Email API returned error:', response.status);
-          }
+          emailSent = true;
+          console.log('Status update email sent successfully');
         } catch (emailError) {
           console.error('Failed to send status update email:', emailError);
         }
       }
 
       setSnack({ open: true, message: `Status updated to ${nextStatus}${emailSent ? ' - Email sent' : ''}`, severity: 'success' });
+      playSound(sounds.statusChange);
     } catch (err: unknown) {
       console.error(err);
       setSnack({ open: true, message: (err as Error)?.message ?? 'Update failed', severity: 'error' });
@@ -429,62 +390,14 @@ export default function BookingsAdmin() {
           // Send status update email if email exists and status is not pending
           if (booking.email && status !== 'pending') {
             try {
-              const subject = status === 'confirmed' ? 'Booking Confirmed - MJ2 Studios' : 'Booking Update - MJ2 Studios';
-              const statusMessage = status === 'confirmed' ? 'great news! Your booking has been confirmed.' : 'we regret to inform you that your booking has been cancelled.';
-              const emailBody = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>${subject}</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: ${status === 'confirmed' ? '#4caf50' : '#f44336'}; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
-        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>MJ2 Studios</h1>
-            <p>Michael Jackson Tributes</p>
-        </div>
-        <div class="content">
-            <h2>Booking Status Update</h2>
-            <p>Dear ${booking.name},</p>
-            <p>We have an update regarding your booking. ${statusMessage}</p>
-            <p><strong>Booking Details:</strong></p>
-            <ul>
-                <li><strong>Name:</strong> ${booking.name}</li>
-                <li><strong>Email:</strong> ${booking.email}</li>
-                <li><strong>Phone:</strong> ${booking.phone || ''}</li>
-                <li><strong>Location:</strong> ${booking.location || ''}</li>
-                <li><strong>Venue:</strong> ${booking.venue || ''}</li>
-                <li><strong>Preferred Date:</strong> ${booking.date || ''}</li>
-                <li><strong>Preferred Time:</strong> ${booking.time || ''}</li>
-                ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
-            </ul>
-            <p><strong>Status:</strong> ${status.charAt(0).toUpperCase() + status.slice(1)}</p>
-            ${status === 'confirmed' ? '<p>We look forward to performing for you!</p>' : '<p>If you have any questions, please contact us.</p>'}
-            <p>Best regards,<br>The MJ2 Studios Team</p>
-        </div>
-        <div class="footer">
-            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
-            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
-        </div>
-    </div>
-</body>
-</html>
-              `;
+              const htmlBody = EmailTemplates.getStatusUpdateHtml({ ...booking, email: booking.email }, status);
               await fetch('/api/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   to: booking.email,
-                  subject,
-                  body: emailBody
+                  subject: status === 'confirmed' ? 'Booking Confirmed - MJ2 Studios' : 'Booking Update - MJ2 Studios',
+                  body: htmlBody
                 }),
               });
             } catch (emailError) {
@@ -495,6 +408,7 @@ export default function BookingsAdmin() {
       }
       setSelectedBookings([]);
       setSnack({ open: true, message: `Bulk status updated to ${status}`, severity: 'success' });
+      playSound(sounds.statusChange);
     } catch (err: unknown) {
       setSnack({ open: true, message: (err as Error)?.message ?? 'Bulk update failed', severity: 'error' });
     }
@@ -511,6 +425,7 @@ export default function BookingsAdmin() {
       }
       setSelectedBookings([]);
       setSnack({ open: true, message: 'Bulk deleted', severity: 'success' });
+      playSound(sounds.deleteAction);
     } catch (err: unknown) {
       setSnack({ open: true, message: (err as Error)?.message ?? 'Bulk delete failed', severity: 'error' });
     }
@@ -556,6 +471,7 @@ export default function BookingsAdmin() {
       }
       setEditOpen(false);
       setSnack({ open: true, message: 'Saved', severity: 'success' });
+      playSound(sounds.editSaved);
     } catch (err: unknown) {
       console.error(err);
       setSnack({ open: true, message: (err as Error)?.message ?? 'Save failed', severity: 'error' });
@@ -676,43 +592,100 @@ export default function BookingsAdmin() {
 
         {/* Statistics Dashboard */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.4 }}>
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Paper sx={{ p: 2, background: 'rgba(255,255,255,0.1)', color: '#ffffff', flex: '1 1 auto', minWidth: 150 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <BarChartIcon sx={{ mr: 1, color: '#ffffff' }} />
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{totalBookings}</Typography>
-                  <Typography variant="body2">Total Bookings</Typography>
+          <Typography variant="h6" sx={{ mb: 2, color: '#ffffff', fontWeight: 700 }}>Dashboard Overview</Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 3, mb: 4 }}>
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
+              <Paper sx={{
+                p: 3,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                color: '#ffffff',
+                borderRadius: 3,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                transition: 'all 0.3s ease',
+                '&:hover': { boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }
+              }}>
+                <Box sx={{ p: 1, borderRadius: 2, background: 'rgba(255,255,255,0.1)' }}>
+                  <BarChartIcon sx={{ fontSize: 40, color: '#ffffff' }} />
                 </Box>
-              </Box>
-            </Paper>
-            <Paper sx={{ p: 2, background: 'rgba(255,165,0,0.2)', color: '#ffffff', flex: '1 1 auto', minWidth: 150 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <PendingIcon sx={{ mr: 1, color: '#ff9800' }} />
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{pendingCount}</Typography>
-                  <Typography variant="body2">Pending</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>{totalBookings}</Typography>
+                  <Typography variant="body2" sx={{ color: '#cccccc', fontSize: '0.9rem' }}>Total Bookings</Typography>
                 </Box>
-              </Box>
-            </Paper>
-            <Paper sx={{ p: 2, background: 'rgba(76,175,80,0.2)', color: '#ffffff', flex: '1 1 auto', minWidth: 150 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <CheckCircleIcon sx={{ mr: 1, color: '#4caf50' }} />
+              </Paper>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
+              <Paper sx={{
+                p: 3,
+                background: 'linear-gradient(135deg, rgba(255,165,0,0.2) 0%, rgba(255,165,0,0.1) 100%)',
+                color: '#ffffff',
+                borderRadius: 3,
+                boxShadow: '0 4px 20px rgba(255,165,0,0.2)',
+                border: '1px solid rgba(255,165,0,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                transition: 'all 0.3s ease',
+                '&:hover': { boxShadow: '0 8px 30px rgba(255,165,0,0.3)' }
+              }}>
+                <Box sx={{ p: 1, borderRadius: 2, background: 'rgba(255,165,0,0.1)' }}>
+                  <PendingIcon sx={{ fontSize: 40, color: '#ff9800' }} />
+                </Box>
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{confirmedCount}</Typography>
-                  <Typography variant="body2">Confirmed</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>{pendingCount}</Typography>
+                  <Typography variant="body2" sx={{ color: '#cccccc', fontSize: '0.9rem' }}>Pending</Typography>
                 </Box>
-              </Box>
-            </Paper>
-            <Paper sx={{ p: 2, background: 'rgba(244,67,54,0.2)', color: '#ffffff', flex: '1 1 auto', minWidth: 150 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <CancelIcon sx={{ mr: 1, color: '#f44336' }} />
+              </Paper>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
+              <Paper sx={{
+                p: 3,
+                background: 'linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(76,175,80,0.1) 100%)',
+                color: '#ffffff',
+                borderRadius: 3,
+                boxShadow: '0 4px 20px rgba(76,175,80,0.2)',
+                border: '1px solid rgba(76,175,80,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                transition: 'all 0.3s ease',
+                '&:hover': { boxShadow: '0 8px 30px rgba(76,175,80,0.3)' }
+              }}>
+                <Box sx={{ p: 1, borderRadius: 2, background: 'rgba(76,175,80,0.1)' }}>
+                  <CheckCircleIcon sx={{ fontSize: 40, color: '#4caf50' }} />
+                </Box>
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{cancelledCount}</Typography>
-                  <Typography variant="body2">Cancelled</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>{confirmedCount}</Typography>
+                  <Typography variant="body2" sx={{ color: '#cccccc', fontSize: '0.9rem' }}>Confirmed</Typography>
                 </Box>
-              </Box>
-            </Paper>
+              </Paper>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
+              <Paper sx={{
+                p: 3,
+                background: 'linear-gradient(135deg, rgba(244,67,54,0.2) 0%, rgba(244,67,54,0.1) 100%)',
+                color: '#ffffff',
+                borderRadius: 3,
+                boxShadow: '0 4px 20px rgba(244,67,54,0.2)',
+                border: '1px solid rgba(244,67,54,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                transition: 'all 0.3s ease',
+                '&:hover': { boxShadow: '0 8px 30px rgba(244,67,54,0.3)' }
+              }}>
+                <Box sx={{ p: 1, borderRadius: 2, background: 'rgba(244,67,54,0.1)' }}>
+                  <CancelIcon sx={{ fontSize: 40, color: '#f44336' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>{cancelledCount}</Typography>
+                  <Typography variant="body2" sx={{ color: '#cccccc', fontSize: '0.9rem' }}>Cancelled</Typography>
+                </Box>
+              </Paper>
+            </motion.div>
           </Box>
         </motion.div>
 
@@ -806,92 +779,106 @@ export default function BookingsAdmin() {
                 </Stack>
               </Box>
             )}
-            <TableContainer sx={{ overflowX: 'auto' }}>
-            <Table>
-              <TableHead sx={{ bgcolor: '#333333' }}>
+            <TableContainer sx={{ overflowX: 'auto', borderRadius: 3, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+            <Table sx={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)' }}>
+              <TableHead sx={{ bgcolor: 'linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%)', borderBottom: '2px solid #555' }}>
                 <TableRow>
-                  <TableCell sx={{ color: '#ffffff' }}>
+                  <TableCell sx={{ color: '#ffffff', fontWeight: 700, fontSize: '1rem', borderBottom: 'none' }}>
                     <Checkbox
                       indeterminate={selectedBookings.length > 0 && selectedBookings.length < paginatedBookings.length}
                       checked={paginatedBookings.length > 0 && selectedBookings.length === paginatedBookings.length}
                       onChange={(e) => handleSelectAll(e.target.checked)}
-                      sx={{ color: '#ffffff' }}
+                      sx={{ color: '#ffffff', '&.Mui-checked': { color: '#ffffff' } }}
                     />
                   </TableCell>
-                  <TableCell onClick={() => handleSort('name')} sx={{ cursor: 'pointer', userSelect: 'none', color: '#ffffff' }}>
+                  <TableCell onClick={() => handleSort('name')} sx={{ cursor: 'pointer', userSelect: 'none', color: '#ffffff', fontWeight: 700, fontSize: '1rem', borderBottom: 'none' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PersonIcon sx={{ mr: 1, color: '#ffffff' }} />
-                      <strong>Name</strong>
+                      Name
                       {sortField === 'name' && (
-                        sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" sx={{ color: '#ffffff' }} /> : <ArrowDownwardIcon fontSize="small" sx={{ color: '#ffffff' }} />
+                        sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" sx={{ color: '#ffffff', ml: 0.5 }} /> : <ArrowDownwardIcon fontSize="small" sx={{ color: '#ffffff', ml: 0.5 }} />
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell onClick={() => handleSort('status')} sx={{ cursor: 'pointer', userSelect: 'none', color: '#ffffff' }}>
+                  <TableCell onClick={() => handleSort('status')} sx={{ cursor: 'pointer', userSelect: 'none', color: '#ffffff', fontWeight: 700, fontSize: '1rem', borderBottom: 'none' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <InfoIcon sx={{ mr: 1, color: '#ffffff' }} />
-                      <strong>Status</strong>
+                      Status
                       {sortField === 'status' && (
-                        sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" sx={{ color: '#ffffff' }} /> : <ArrowDownwardIcon fontSize="small" sx={{ color: '#ffffff' }} />
+                        sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" sx={{ color: '#ffffff', ml: 0.5 }} /> : <ArrowDownwardIcon fontSize="small" sx={{ color: '#ffffff', ml: 0.5 }} />
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell onClick={() => handleSort('createdAt')} sx={{ cursor: 'pointer', userSelect: 'none', color: '#ffffff' }}>
+                  <TableCell onClick={() => handleSort('createdAt')} sx={{ cursor: 'pointer', userSelect: 'none', color: '#ffffff', fontWeight: 700, fontSize: '1rem', borderBottom: 'none' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <ScheduleIcon sx={{ mr: 1, color: '#ffffff' }} />
-                      <strong>Created</strong>
+                      Created
                       {sortField === 'createdAt' && (
-                        sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" sx={{ color: '#ffffff' }} /> : <ArrowDownwardIcon fontSize="small" sx={{ color: '#ffffff' }} />
+                        sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" sx={{ color: '#ffffff', ml: 0.5 }} /> : <ArrowDownwardIcon fontSize="small" sx={{ color: '#ffffff', ml: 0.5 }} />
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell align="right" sx={{ color: '#ffffff' }}><strong>Actions</strong></TableCell>
+                  <TableCell align="right" sx={{ color: '#ffffff', fontWeight: 700, fontSize: '1rem', borderBottom: 'none' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedBookings.map((b) => {
+                {paginatedBookings.map((b, index) => {
                   console.log('Rendering booking row for:', b.name, 'status:', b.status, 'email:', b.email);
                   return (
-                  <TableRow key={b.id} hover sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
-                    <TableCell sx={{ color: '#ffffff' }}>
+                  <TableRow
+                    key={b.id}
+                    hover
+                    sx={{
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.1)', transform: 'scale(1.01)', transition: 'all 0.2s ease' },
+                      bgcolor: index % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+                      borderBottom: '1px solid rgba(255,255,255,0.1)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <TableCell sx={{ color: '#ffffff', borderBottom: 'none' }}>
                       <Checkbox
                         checked={selectedBookings.includes(b.id)}
                         onChange={(e) => handleSelectBooking(b.id, e.target.checked)}
-                        sx={{ color: '#ffffff' }}
+                        sx={{ color: '#ffffff', '&.Mui-checked': { color: '#ffffff' } }}
                       />
                     </TableCell>
-                    <TableCell onClick={() => handleView(b)} sx={{ color: '#ffffff', cursor: 'pointer' }}>{b.name}</TableCell>
-                    <TableCell onClick={() => handleQuickStatusUpdate(b)} sx={{ cursor: 'pointer' }}>
-                      <Typography
-                        sx={{
-                          color: b.status === 'confirmed' ? '#4caf50' : b.status === 'cancelled' ? '#f44336' : '#ff9800',
-                          fontWeight: 600
-                        }}
-                      >
-                        {b.status || 'pending'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ color: '#ffffff' }}>{b.createdAt ? (typeof b.createdAt === 'number' ? (mounted ? new Date(b.createdAt).toLocaleString() : new Date(b.createdAt).toISOString()) : ((b.createdAt as any)?.toDate ? (mounted ? (b.createdAt as any).toDate().toLocaleString() : (b.createdAt as any).toDate().toISOString()) : String(b.createdAt))) : ''}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => handleView(b)} color="info" title="View details" sx={{ mr: 1 }}>
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleEdit(b)} color="primary" title="Edit booking" sx={{ mr: 1 }}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleDeleteClick(b)} color="error" title="Delete booking" sx={{ mr: 1 }}>
-                        <DeleteIcon />
-                      </IconButton>
-                      {b.phone && (
-                        <IconButton
-                          size="small"
-                          onClick={() => handleCall(b.phone!)}
-                          color="success"
-                          title="Call customer"
+                    <TableCell onClick={() => handleView(b)} sx={{ color: '#ffffff', cursor: 'pointer', borderBottom: 'none', fontSize: '0.95rem' }}>{b.name}</TableCell>
+                    <TableCell onClick={() => handleQuickStatusUpdate(b)} sx={{ cursor: 'pointer', borderBottom: 'none' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 1, py: 0.5, borderRadius: 1, bgcolor: b.status === 'confirmed' ? 'rgba(76,175,80,0.2)' : b.status === 'cancelled' ? 'rgba(244,67,54,0.2)' : 'rgba(255,165,0,0.2)' }}>
+                        <Typography
+                          sx={{
+                            color: b.status === 'confirmed' ? '#4caf50' : b.status === 'cancelled' ? '#f44336' : '#ff9800',
+                            fontWeight: 600,
+                            fontSize: '0.9rem'
+                          }}
                         >
-                          <PhoneIcon />
+                          {b.status || 'pending'}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ color: '#cccccc', borderBottom: 'none', fontSize: '0.9rem' }}>{b.createdAt ? (typeof b.createdAt === 'number' ? (mounted ? new Date(b.createdAt).toLocaleString() : new Date(b.createdAt).toISOString()) : ((b.createdAt as any)?.toDate ? (mounted ? (b.createdAt as any).toDate().toLocaleString() : (b.createdAt as any).toDate().toISOString()) : String(b.createdAt))) : ''}</TableCell>
+                    <TableCell align="right" sx={{ borderBottom: 'none' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                        <IconButton size="small" onClick={() => handleView(b)} sx={{ color: '#2196f3', '&:hover': { bgcolor: 'rgba(33,150,243,0.1)' } }} title="View details">
+                          <VisibilityIcon />
                         </IconButton>
-                      )}
+                        <IconButton size="small" onClick={() => handleEdit(b)} sx={{ color: '#3f51b5', '&:hover': { bgcolor: 'rgba(63,81,181,0.1)' } }} title="Edit booking">
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleDeleteClick(b)} sx={{ color: '#f44336', '&:hover': { bgcolor: 'rgba(244,67,54,0.1)' } }} title="Delete booking">
+                          <DeleteIcon />
+                        </IconButton>
+                        {b.phone && (
+                          <IconButton
+                            size="small"
+                            onClick={() => handleCall(b.phone!)}
+                            sx={{ color: '#4caf50', '&:hover': { bgcolor: 'rgba(76,175,80,0.1)' } }}
+                            title="Call customer"
+                          >
+                            <PhoneIcon />
+                          </IconButton>
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
                   );
@@ -1179,7 +1166,6 @@ export default function BookingsAdmin() {
         <Snackbar open={snack.open} autoHideDuration={5000} onClose={() => setSnack({ ...snack, open: false })}>
           <Alert severity={snack.severity} onClose={() => setSnack({ ...snack, open: false })} sx={{ width: '100%' }}>{snack.message}</Alert>
         </Snackbar>
-        <audio ref={audioRef} src="/app/notification_Sound.mp3" preload="auto" />
 
         {/* Bulk Email Functions */}
         <Box sx={{ mt: 4, p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
@@ -1223,71 +1209,20 @@ export default function BookingsAdmin() {
 
                 for (const booking of confirmedBookings) {
                   try {
-                    const emailBody = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Booking Confirmed - MJ2 Studios</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #4caf50; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
-        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>MJ2 Studios</h1>
-            <p>Michael Jackson Tributes</p>
-        </div>
-        <div class="content">
-            <h2>Booking Confirmation</h2>
-            <p>Dear ${booking.name},</p>
-            <p>We have great news! Your booking has been confirmed.</p>
-            <p><strong>Booking Details:</strong></p>
-            <ul>
-                <li><strong>Name:</strong> ${booking.name}</li>
-                <li><strong>Email:</strong> ${booking.email}</li>
-                <li><strong>Phone:</strong> ${booking.phone || ''}</li>
-                <li><strong>Location:</strong> ${booking.location || ''}</li>
-                <li><strong>Venue:</strong> ${booking.venue || ''}</li>
-                <li><strong>Preferred Date:</strong> ${booking.date || ''}</li>
-                <li><strong>Preferred Time:</strong> ${booking.time || ''}</li>
-                ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
-            </ul>
-            <p><strong>Status:</strong> Confirmed</p>
-            <p>We look forward to performing for you!</p>
-            <p>Best regards,<br>The MJ2 Studios Team</p>
-        </div>
-        <div class="footer">
-            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
-            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
-        </div>
-    </div>
-</body>
-</html>
-                    `;
-                    const response = await fetch('/api/send-email', {
+                    const htmlBody = EmailTemplates.getStatusUpdateHtml({ ...booking, email: booking.email! }, 'confirmed');
+                    await fetch('/api/send-email', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         to: booking.email,
                         subject: 'Booking Confirmed - MJ2 Studios',
-                        body: emailBody
+                        body: htmlBody
                       }),
                     });
-                    if (response.ok) {
-                      successCount++;
-                    } else {
-                      errorCount++;
-                      console.error('Failed to send confirmation email to:', booking.email);
-                    }
+                    successCount++;
                   } catch (error) {
                     errorCount++;
-                    console.error('Error sending confirmation email to:', booking.email, error);
+                    console.error('Failed to send confirmation email to:', booking.email, error);
                   }
                 }
 
@@ -1320,72 +1255,20 @@ export default function BookingsAdmin() {
 
                 for (const booking of cancelledBookings) {
                   try {
-                    const emailBody = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Booking Update - MJ2 Studios</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #f44336; color: #fff; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
-        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>MJ2 Studios</h1>
-            <p>Michael Jackson Tributes</p>
-        </div>
-        <div class="content">
-            <h2>Booking Status Update</h2>
-            <p>Dear ${booking.name},</p>
-            <p>We regret to inform you that your booking has been cancelled.</p>
-            <p><strong>Cancel Notice:</strong> ${cancellationReason}</p>
-            <p><strong>Booking Details:</strong></p>
-            <ul>
-                <li><strong>Name:</strong> ${booking.name}</li>
-                <li><strong>Email:</strong> ${booking.email}</li>
-                <li><strong>Phone:</strong> ${booking.phone || ''}</li>
-                <li><strong>Location:</strong> ${booking.location || ''}</li>
-                <li><strong>Venue:</strong> ${booking.venue || ''}</li>
-                <li><strong>Preferred Date:</strong> ${booking.date || ''}</li>
-                <li><strong>Preferred Time:</strong> ${booking.time || ''}</li>
-                ${booking.message ? `<li><strong>Message:</strong> ${booking.message}</li>` : ''}
-            </ul>
-            <p><strong>Status:</strong> Cancelled</p>
-            <p>If you have any questions, please contact us.</p>
-            <p>Best regards,<br>The MJ2 Studios Team</p>
-        </div>
-        <div class="footer">
-            <p>&copy; 2024 MJ2 Studios. All rights reserved.</p>
-            <p>Visit us at <a href="https://mj2-studios.co.uk">mj2-studios.co.uk</a></p>
-        </div>
-    </div>
-</body>
-</html>
-                    `;
-                    const response = await fetch('/api/send-email', {
+                    const htmlBody = EmailTemplates.getStatusUpdateHtml({ ...booking, email: booking.email! }, 'cancelled', cancellationReason || undefined);
+                    await fetch('/api/send-email', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         to: booking.email,
                         subject: 'Booking Update - MJ2 Studios',
-                        body: emailBody
+                        body: htmlBody
                       }),
                     });
-                    if (response.ok) {
-                      successCount++;
-                    } else {
-                      errorCount++;
-                      console.error('Failed to send cancellation email to:', booking.email);
-                    }
+                    successCount++;
                   } catch (error) {
                     errorCount++;
-                    console.error('Error sending cancellation email to:', booking.email, error);
+                    console.error('Failed to send cancellation email to:', booking.email, error);
                   }
                 }
 

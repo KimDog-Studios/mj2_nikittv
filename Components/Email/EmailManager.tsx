@@ -1,21 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { db } from './firebaseClient';
+import { db } from '../Utils/firebaseClient';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { EmailService } from './services';
+import { Email, EmailForm } from './types';
 
-interface Email {
-  id?: string;
-  to: string;
-  subject: string;
-  body: string;
-  sent?: boolean;
-  createdAt: Date;
-}
-
-const EmailSystem: React.FC = () => {
+const EmailManager: React.FC = () => {
   const [emails, setEmails] = useState<Email[]>([]);
-  const [form, setForm] = useState({ to: '', subject: '', body: '' });
+  const [form, setForm] = useState<EmailForm>({ to: '', subject: '', body: '' });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -50,13 +43,8 @@ const EmailSystem: React.FC = () => {
     if (!email.id) return;
     setLoading(true);
     try {
-      // Call API to send email
-      const response = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(email),
-      });
-      if (response.ok) {
+      const success = await EmailService.sendEmailLegacy(email);
+      if (success) {
         await updateDoc(doc(db, 'emails', email.id), { sent: true });
         loadEmails();
       } else {
@@ -114,4 +102,4 @@ const EmailSystem: React.FC = () => {
   );
 };
 
-export default EmailSystem;
+export default EmailManager;

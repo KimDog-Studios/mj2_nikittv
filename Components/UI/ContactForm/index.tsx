@@ -17,7 +17,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebaseClient';
+import { db } from '../../Utils/firebaseClient';
 
 interface ContactFormState {
   name: string;

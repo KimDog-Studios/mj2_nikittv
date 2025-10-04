@@ -10,7 +10,7 @@ import Typography from '@mui/material/Typography';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Stack from '@mui/material/Stack';
 import InputAdornment from '@mui/material/InputAdornment';
-import { auth } from '@/Components/firebaseClient';
+import { auth } from '@/Components/Utils/firebaseClient';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 
 export default function AdminLogin() {
@@ -24,7 +24,7 @@ export default function AdminLogin() {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
         // already signed in
-        router.push('/manage_booking');
+        router.push('/pages/manage_booking');
       }
     });
     return () => unsub();

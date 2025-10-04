@@ -176,8 +176,9 @@ function NavBar() {
                 whiteSpace: 'nowrap',
                 fontSize: { xs: '1em', md: '1.1em' },
               }}
+              suppressHydrationWarning={true}
             >
-              <span style={{ display: 'inline-block', textAlign: 'left' }}>
+              <span style={{ display: 'inline-block', textAlign: 'left' }} suppressHydrationWarning={true}>
                 {typedText}
                 <span style={{
                   display: 'inline-block',

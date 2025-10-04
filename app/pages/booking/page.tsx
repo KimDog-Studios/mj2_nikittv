@@ -1,4 +1,5 @@
-import BookingsForm from '@/Components/BookingsForm'
+"use client";
+import { BookingForm } from '@/Components/Booking/Form'
 import React from 'react'
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -13,6 +14,19 @@ import TheaterComedy from '@mui/icons-material/TheaterComedy';
 function page() {
   return (
     <div style={{ background: 'linear-gradient(135deg, #000 0%, #1a1a2e 50%, #000 100%)', minHeight: '100vh', width: '100vw', color: '#fff', position: 'relative' }}>
+      {/* Floating Background Elements */}
+      <div style={{ position: 'absolute', top: '10%', left: '5%', animation: 'float1 6s ease-in-out infinite', opacity: 0.1 }}>
+        <MusicNote sx={{ fontSize: '3rem', color: '#ffd700' }} />
+      </div>
+      <div style={{ position: 'absolute', top: '20%', right: '10%', animation: 'float2 8s ease-in-out infinite', opacity: 0.1 }}>
+        <TheaterComedy sx={{ fontSize: '2.5rem', color: '#ffd700' }} />
+      </div>
+      <div style={{ position: 'absolute', bottom: '30%', left: '8%', animation: 'float3 10s ease-in-out infinite', opacity: 0.1 }}>
+        <Star sx={{ fontSize: '2rem', color: '#ffd700' }} />
+      </div>
+      <div style={{ position: 'absolute', bottom: '20%', right: '5%', animation: 'float1 7s ease-in-out infinite', opacity: 0.1 }}>
+        <MusicNote sx={{ fontSize: '2.5rem', color: '#ffd700' }} />
+      </div>
       <style>{`
         body {
           background: linear-gradient(135deg, #000 0%, #1a1a2e 50%, #000 100%);
@@ -25,6 +39,18 @@ function page() {
           0% { opacity: 0; transform: translateY(30px); }
           100% { opacity: 1; transform: translateY(0); }
         }
+        @keyframes float1 {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        @keyframes float2 {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-15px) rotate(-3deg); }
+        }
+        @keyframes float3 {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-25px); }
+        }
       `}</style>
       {/* Header */}
       <Box sx={{
@@ -35,24 +61,24 @@ function page() {
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        px: 2,
+        px: { xs: 1, sm: 2 },
         background: 'linear-gradient(45deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)',
         borderRadius: 4,
-        mx: 2,
+        mx: { xs: 1, sm: 2 },
         my: 4,
         animation: 'fadeInUp 1s ease-out',
         position: 'relative',
       }}>
-        <Box sx={{ position: 'absolute', top: 20, left: 20, opacity: 0.3 }}>
+        <Box sx={{ position: 'absolute', top: 20, left: 20, opacity: 0.3, display: { xs: 'none', sm: 'block' } }}>
           <Star sx={{ fontSize: '2rem', color: '#ffd700' }} />
         </Box>
-        <Box sx={{ position: 'absolute', top: 40, right: 30, opacity: 0.3 }}>
+        <Box sx={{ position: 'absolute', top: 40, right: 30, opacity: 0.3, display: { xs: 'none', sm: 'block' } }}>
           <MusicNote sx={{ fontSize: '2.5rem', color: '#ffd700' }} />
         </Box>
-        <Box sx={{ position: 'absolute', bottom: 30, left: 30, opacity: 0.3 }}>
+        <Box sx={{ position: 'absolute', bottom: 30, left: 30, opacity: 0.3, display: { xs: 'none', sm: 'block' } }}>
           <TheaterComedy sx={{ fontSize: '2rem', color: '#ffd700' }} />
         </Box>
-        <Box sx={{ position: 'absolute', bottom: 20, right: 20, opacity: 0.3 }}>
+        <Box sx={{ position: 'absolute', bottom: 20, right: 20, opacity: 0.3, display: { xs: 'none', sm: 'block' } }}>
           <Star sx={{ fontSize: '1.5rem', color: '#ffd700' }} />
         </Box>
         <Typography variant="h3" sx={{ color: '#fff', fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', gap: 1, animation: 'titleGlow 3s ease-in-out infinite' }}>
@@ -66,7 +92,7 @@ function page() {
       </Box>
 
       {/* Form Section */}
-      <section style={{
+      <Box id="booking-form" sx={{
         maxWidth: 1200,
         margin: '40px auto',
         padding: '40px 20px',
@@ -78,7 +104,7 @@ function page() {
         animation: 'fadeInUp 1.2s ease-out 0.5s both',
         borderRadius: '20px',
       }}>
-        <BookingsForm />
+        <BookingForm />
         <Box sx={{
           position: 'absolute',
           top: 0,
@@ -89,13 +115,13 @@ function page() {
           pointerEvents: 'none',
           borderRadius: '20px',
         }} />
-      </section>
+      </Box>
 
       {/* FAQ Section */}
-      <section style={{
+      <Box sx={{
         maxWidth: 1000,
         margin: '40px auto',
-        padding: '40px 20px',
+        padding: { xs: '20px 10px', sm: '40px 20px' },
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -148,7 +174,98 @@ function page() {
             </AccordionDetails>
           </Accordion>
         </Box>
-      </section>
+      </Box>
+
+      {/* Testimonials Section */}
+      <Box sx={{
+        maxWidth: 1200,
+        margin: '40px auto',
+        padding: '40px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 20,
+        position: 'relative',
+        animation: 'fadeInUp 1.6s ease-out 1.2s both',
+      }}>
+        <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, textAlign: 'center', mb: 2 }}>
+          What Our Clients Say
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center' }}>
+          <Box sx={{
+            bgcolor: 'rgba(24,26,27,0.85)',
+            backdropFilter: 'blur(15px)',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 2,
+            p: 3,
+            maxWidth: 300,
+            textAlign: 'center',
+            animation: 'fadeInUp 1.8s ease-out 1.4s both',
+            '&:hover': { transform: 'translateY(-5px)', transition: '0.3s' }
+          }}>
+            <Typography variant="body1" sx={{ mb: 2, fontStyle: 'italic' }}>
+              "MJ2's performance was absolutely phenomenal! The energy, the dancing, the voice – it was like Michael Jackson himself was there."
+            </Typography>
+            <Typography variant="subtitle2" sx={{ color: '#ffd700', fontWeight: 600 }}>
+              Sarah T., Bridgend
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} sx={{ color: '#ffd700', fontSize: '1rem' }} />
+              ))}
+            </Box>
+          </Box>
+          <Box sx={{
+            bgcolor: 'rgba(24,26,27,0.85)',
+            backdropFilter: 'blur(15px)',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 2,
+            p: 3,
+            maxWidth: 300,
+            textAlign: 'center',
+            animation: 'fadeInUp 2s ease-out 1.6s both',
+            '&:hover': { transform: 'translateY(-5px)', transition: '0.3s' }
+          }}>
+            <Typography variant="body1" sx={{ mb: 2, fontStyle: 'italic' }}>
+              "Booked for our wedding and it was the highlight of the night! Guests are still talking about it weeks later."
+            </Typography>
+            <Typography variant="subtitle2" sx={{ color: '#ffd700', fontWeight: 600 }}>
+              Mike R., Maesteg
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} sx={{ color: '#ffd700', fontSize: '1rem' }} />
+              ))}
+            </Box>
+          </Box>
+          <Box sx={{
+            bgcolor: 'rgba(24,26,27,0.85)',
+            backdropFilter: 'blur(15px)',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 2,
+            p: 3,
+            maxWidth: 300,
+            textAlign: 'center',
+            animation: 'fadeInUp 2.2s ease-out 1.8s both',
+            '&:hover': { transform: 'translateY(-5px)', transition: '0.3s' }
+          }}>
+            <Typography variant="body1" sx={{ mb: 2, fontStyle: 'italic' }}>
+              "Incredible attention to detail and professionalism. The kids loved it – definitely recommending to friends!"
+            </Typography>
+            <Typography variant="subtitle2" sx={{ color: '#ffd700', fontWeight: 600 }}>
+              Emma L., Pontycymer
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} sx={{ color: '#ffd700', fontSize: '1rem' }} />
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      </Box>
 
     </div>
   )

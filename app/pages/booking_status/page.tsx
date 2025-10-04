@@ -11,7 +11,7 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import SendIcon from '@mui/icons-material/Send';
 import { useTheme } from '@mui/material/styles';
-import { db, rtdb } from '@/Components/firebaseClient';
+import { db, rtdb } from '@/Components/Utils/firebaseClient';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { ref, onValue, push, set } from 'firebase/database';
 
