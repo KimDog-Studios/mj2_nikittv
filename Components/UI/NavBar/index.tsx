@@ -431,7 +431,7 @@ const NavBar: React.FC = () => {
           )}
 
           {user && user.email === 'admin@mj2-studios.co.uk' && (
-            <Link href='/pages/signin-up' style={{ textDecoration: 'none' }}>
+            <Link href='/pages/manage_booking' style={{ textDecoration: 'none' }}>
               <NavButton>
                 Admin
               </NavButton>
@@ -674,7 +674,7 @@ const NavBar: React.FC = () => {
                   <ListItem disablePadding sx={{ mb: 1 }}>
                     <ListItemButton
                       component={Link}
-                      href='/pages/signin-up'
+                      href='/pages/manage_booking'
                       onClick={() => setMobileOpen(false)}
                       sx={{
                         borderRadius: 2,
