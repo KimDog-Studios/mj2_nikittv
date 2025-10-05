@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/Components/Utils/firebaseClient';
@@ -33,7 +33,7 @@ const GlassPaper = styled(Paper)(({ theme }) => ({
   },
 }));
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [verifying, setVerifying] = useState(true);
@@ -195,5 +195,30 @@ export default function VerifyEmailPage() {
         </GlassPaper>
       </motion.div>
     </Box>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 4,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        }}
+      >
+        <GlassPaper sx={{ width: { xs: '90%', sm: 480 }, p: 4 }}>
+          <Typography variant="h5" sx={{ textAlign: 'center' }}>
+            Loading...
+          </Typography>
+        </GlassPaper>
+      </Box>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
