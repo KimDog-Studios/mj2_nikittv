@@ -309,6 +309,24 @@ export const EmailTemplates = {
     return getBaseTemplate(headerColor, 'Booking Status Update', content);
   },
 
+  // Generate email verification HTML
+  getEmailVerificationHtml: (name: string): string => {
+    const content = `
+      <h2 style="color: #4caf50; margin-bottom: 20px;">Welcome to MJ2 Studios!</h2>
+      <p>Dear ${name},</p>
+      <p>Thank you for creating an account with MJ2 Studios. To complete your registration and start booking amazing Michael Jackson tribute performances, please verify your email address.</p>
+      <p>Click the button below to verify your email:</p>
+      <a href="{{verification_link}}" class="button" target="_blank">Verify Your Email</a>
+      <p><strong>Important:</strong> This verification link will expire in 24 hours. If you did not create this account, please ignore this email.</p>
+      <p>Once verified, you'll be able to sign in and access all our services.</p>
+      <p>If you have any questions, feel free to contact our support team.</p>
+      <p>Welcome to the MJ2 Studios family!</p>
+      <p>Best regards,<br><strong>The MJ2 Studios Team</strong></p>
+    `;
+
+    return getBaseTemplate('#4caf50', 'Email Verification', content);
+  },
+
   // Generate sign-in notification email HTML
   getSignInNotificationHtml: (name: string, email: string, signInTime: string): string => {
     const content = `

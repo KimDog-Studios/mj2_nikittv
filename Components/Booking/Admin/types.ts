@@ -6,6 +6,7 @@ export type Booking = {
   phone?: string;
   location?: string;
   venue?: string;
+  package?: string;
   date?: string;
   time?: string;
   message?: string;

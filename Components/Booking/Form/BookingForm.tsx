@@ -147,23 +147,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
 
   // Fetch booking counts and times in real-time
   useEffect(() => {
-    const unsubscribe = rtdb ? onValue(ref(rtdb, 'bookings'), (snapshot) => {
-      const counts = new Map<string, Map<string, number>>();
-      const timesMap = new Map<string, Map<string, string[]>>();
-      snapshot.forEach((child) => {
-        const data = child.val();
-        if (data.date && data.location) {
-          const loc = data.location.toLowerCase();
-          if (!counts.has(data.date)) counts.set(data.date, new Map());
-          counts.get(data.date)!.set(loc, (counts.get(data.date)!.get(loc) || 0) + 1);
-          if (!timesMap.has(data.date)) timesMap.set(data.date, new Map());
-          if (!timesMap.get(data.date)!.has(loc)) timesMap.get(data.date)!.set(loc, []);
-          if (data.time) timesMap.get(data.date)!.get(loc)!.push(data.time);
-        }
-      });
-      setDateCounts(counts);
-      setDateTimes(timesMap);
-    }) : onSnapshot(collection(db, 'bookings'), (snapshot) => {
+    const unsubscribe = onSnapshot(collection(db, 'bookings'), (snapshot) => {
       const counts = new Map<string, Map<string, number>>();
       const timesMap = new Map<string, Map<string, string[]>>();
       snapshot.docs.forEach(doc => {
@@ -181,7 +165,7 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
       setDateTimes(timesMap);
     });
     return unsubscribe;
-  }, [rtdb]);
+  }, []);
 
 
   const availableTimes = useMemo(() => {
@@ -372,13 +356,9 @@ function ManageBookings({ selectedLocation, onLocationChange }: Props) {
       } while (true);
 
       const payload = { ...form, date: isoDate, time: form.time?.format('HH:mm'), bookingId, location: form.location.toLowerCase() };
-      if (rtdb) {
-        const bookingsRef = ref(rtdb, 'bookings');
-        const newRef = push(bookingsRef);
-        await set(newRef, { ...payload, createdAt: Date.now() });
-      } else {
-        await addDoc(collection(db, 'bookings'), { ...payload, createdAt: serverTimestamp() });
-      }
+      console.log('Saving booking to Firestore:', payload);
+      const docRef = await addDoc(collection(db, 'bookings'), { ...payload, createdAt: serverTimestamp() });
+      console.log('Booking saved to Firestore successfully, doc ID:', docRef.id);
 
       // Send confirmation email
       try {
